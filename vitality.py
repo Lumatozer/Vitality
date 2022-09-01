@@ -6,6 +6,9 @@ def is_num(chk):
     except:
         return False
 
+def error():
+    raise Exception("Error <3")
+
 def is_valid_var_name(varname):
     allowed="abcdefghijklmnopqrstuvwxyz"
     allowed+=allowed.upper()
@@ -14,6 +17,17 @@ def is_valid_var_name(varname):
         varname=varname.replace(x,"")
     if varname=="":
         return True
+
+def is_valid_addr(addr):
+    allowed="abcdefghijklmnopqrstuvwxyz"
+    allowed+=allowed.upper()
+    allowed+="1234567890"
+    allowed+="_"
+    for x in allowed:
+        addr=addr.replace(x,"")
+    if addr=="":
+        return True
+
 
 def break_expr(expr):
     tokens=[]
@@ -53,7 +67,7 @@ def break_expr(expr):
                 msg=""
                 tokens.append(cache+"'")
                 cache=""
-        if cache=="in":
+        if cache=="in" or cache=="or" or cache=="and":
             tokens.append(" "+cache+" ")
             cache=""
     return tokens
@@ -174,7 +188,7 @@ def expr_post_processor(prep_expr):
     return val
 
 def parser(tokenz,debug=True):
-    identifiers=["var","list","print","if"]
+    identifiers=["var","list","print","if","tx"]
     global symbol_table
     symbol_table={}
     def internal(tokenz):
@@ -205,8 +219,9 @@ def parser(tokenz,debug=True):
                         ignore.append(i+3)
                         continue
                     else:
-                        print("Syntax Error detected while defining variable.")
-                        exit()
+                        if debug:
+                            print("Syntax Error detected while defining variable.")
+                        error()
                 if x == "list":
                     list_operators=["append","remove"]
                     if tokenz[i+1] not in list(symbol_table.keys()) and is_valid_var_name(tokenz[i+1]) and tokenz[i+1] not in list_operators and tokenz[i+1] not in identifiers:
@@ -263,22 +278,62 @@ def parser(tokenz,debug=True):
                             continue
                         else:
                             print("Invalid print statement specified")
-                            exit()
+                            error()
                     else:
                         if tokenz[i+1] not in identifiers:
                             ignore.append(i+1)
                         continue
+                if x=="tx":
+                    if tokenz[i+1] not in identifiers and tokenz[i+2] not in identifiers:
+                        amount=""
+                        receiver=""
+                        if is_num(tokenz[i+1]):
+                            amount=float(tokenz[i+1])
+                        elif tokenz[i+1] in list(symbol_table.keys()) and is_num(symbol_table[tokenz[i+1]]):
+                            amount=float(symbol_table[tokenz[i+1]])
+                        else:
+                            if debug:
+                                print("Invalid amount for transaction",tokenz[i+1])
+                            error()
+                        if tokenz[i+2] in list(symbol_table.keys()) and is_valid_addr(symbol_table[tokenz[i+2]]):
+                            receiver=symbol_table[tokenz[i+2]]
+                        elif is_valid_var_name(tokenz[i+2]):
+                            receiver=tokenz[i+2]
+                        else:
+                            if debug:
+                                print("Invalid receiver",tokenz[i+2])
+                            error()
+                        if debug:
+                            print("Tx",amount,receiver)
+                        if amount=="" or receiver=="":
+                            if debug:
+                                print("Syntax Error while defining transaction")
+                            error()
+                        ignore.append(i+1)
+                        ignore.append(i+2)
+                        continue
                 if x=="if":
-                    ignore.append(i+1)
-                    ignore.append(i+2)
                     if symbol_table[tokenz[i+1]]:
+                        ignore.append(i+1)
+                        ignore.append(i+2)
                         internal(tokeniser(tokenz[i+2][1:-1]+";"))
                     continue
                 else:
-                    print(f"Syntax Error : {x} is an invalid token")
-                    exit()
+                    if debug:
+                        print(f"Syntax Error : {x} is an invalid token")
+                    error()
     internal(tokenz)
 
 def run(script,debug=True):
-    parse_tokens=tokeniser(script)
-    parser(parse_tokens,debug)
+    try:
+        parse_tokens=tokeniser(script)
+    except:
+        if debug:
+            print("Problem while generating tokens")
+        error()
+    try:
+        parser(parse_tokens,debug)
+    except:
+        if debug:
+            print("Problem while parsing tokens")
+        error()
