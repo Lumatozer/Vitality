@@ -1,3 +1,6 @@
-# Vitality
-
-Vitality is a Python-based interpreted language for smart contracts.
+## Example
+```python
+import vitality
+script="print 'Hello world.'"
+vitality.run(script)
+```
