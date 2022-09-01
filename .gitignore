@@ -3,3 +3,4 @@ evm.py
 script.alu
 test.asc
 .git/
+.gitignore
