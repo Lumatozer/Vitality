@@ -249,20 +249,25 @@ def parser(tokenz,debug=True):
                         ignore.append(i+2)
                         ignore.append(i+3)
                         continue
-                if x=="print" and debug:
-                    if tokenz[i+1] not in identifiers:
-                        ignore.append(i+1)
-                        if tokenz[i+1] in list(symbol_table.keys()):
-                            print(symbol_table[tokenz[i+1]])
+                if x=="print":
+                    if debug:
+                        if tokenz[i+1] not in identifiers:
+                            ignore.append(i+1)
+                            if tokenz[i+1] in list(symbol_table.keys()):
+                                print(symbol_table[tokenz[i+1]])
+                                continue
+                            if tokenz[i+1][0]=="(" and tokenz[i+1][-1]==")":
+                                print(expr_post_processor(expr_pre_processor(tokenz[i+1])))
+                                continue
+                            print(refactor_temp(tokenz[i+1]))
                             continue
-                        if tokenz[i+1][0]=="(" and tokenz[i+1][-1]==")":
-                            print(expr_post_processor(expr_pre_processor(tokenz[i+1])))
-                            continue
-                        print(refactor_temp(tokenz[i+1]))
-                        continue
+                        else:
+                            print("Invalid print statement specified")
+                            exit()
                     else:
-                        print("Invalid print statement specified")
-                        exit()
+                        if tokenz[i+1] not in identifiers:
+                            ignore.append(i+1)
+                        continue
                 if x=="if":
                     ignore.append(i+1)
                     ignore.append(i+2)
@@ -274,6 +279,6 @@ def parser(tokenz,debug=True):
                     exit()
     internal(tokenz)
 
-def run(script):
+def run(script,debug=True):
     parse_tokens=tokeniser(script)
-    parser(parse_tokens)
+    parser(parse_tokens,debug)
