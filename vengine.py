@@ -1,6 +1,9 @@
+def ltz_round(num):
+    return round(float(num),8)
+
 def is_num(chk):
     try:
-        float(chk)
+        ltz_round(chk)
         return True
     except:
         return False
@@ -76,7 +79,7 @@ def refactor_temp(data):
     if data[0] == "'" and data[-1]=="'":
         return data[1:-1]
     try:
-        return float(data)
+        return ltz_round(data)
     except:
         pass
     return data
@@ -186,7 +189,7 @@ def expr_post_processor(prep_expr):
         for x in val:
             i+=1
             if type(x)==type(1):
-                val[i]=float(x)
+                val[i]=ltz_round(x)
     return val
 
 def parser(tokenz,st={},debug=True):
@@ -232,11 +235,11 @@ def parser(tokenz,st={},debug=True):
                             print("Syntax Error detected while defining variable.")
                         error()
                 if x=="int" and args==1:
-                    symbol_table[tokenz[i+1]]=int(float(symbol_table[tokenz[i+1]]))
+                    symbol_table[tokenz[i+1]]=int(ltz_round(symbol_table[tokenz[i+1]]))
                     ignore.append(i+1)
                     continue
                 if x=="float" and args==1:
-                    symbol_table[tokenz[i+1]]=float(symbol_table[tokenz[i+1]])
+                    symbol_table[tokenz[i+1]]=ltz_round(symbol_table[tokenz[i+1]])
                     ignore.append(i+1)
                     continue
                 if x=="str" and args==1:
@@ -309,9 +312,9 @@ def parser(tokenz,st={},debug=True):
                         amount=""
                         receiver=""
                         if is_num(tokenz[i+1]):
-                            amount=float(tokenz[i+1])
+                            amount=ltz_round(tokenz[i+1])
                         elif tokenz[i+1] in list(symbol_table.keys()) and is_num(symbol_table[tokenz[i+1]]):
-                            amount=float(symbol_table[tokenz[i+1]])
+                            amount=ltz_round(symbol_table[tokenz[i+1]])
                         else:
                             if debug:
                                 print("Invalid amount for transaction",tokenz[i+1])
