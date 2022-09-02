@@ -190,7 +190,10 @@ def expr_post_processor(prep_expr):
             i+=1
             if type(x)==type(1):
                 val[i]=ltz_round(x)
-    return val
+    try:
+        return ltz_round(val)
+    except:
+        return val
 
 def parser(tokenz,st={},debug=True):
     global symbol_table
