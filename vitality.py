@@ -67,7 +67,7 @@ def break_expr(expr):
                 msg=""
                 tokens.append(cache+"'")
                 cache=""
-        if cache=="in" or cache=="or" or cache=="and":
+        if cache=="in" or cache=="or" or cache=="and" or cache=="import":
             tokens.append(" "+cache+" ")
             cache=""
     return tokens
@@ -83,12 +83,13 @@ def refactor_temp(str):
 
 def tokeniser(code):
     global tokens,cache,state,alt,last
-    code=code.split("\n")
+    code=code.replace("\n","")
     tokens=[]
     cache=""
     state=""
     alt=""
     last=""
+    msg=""
     def appender(to_append):
         global tokens,cache,state,alt,last
         tokens.append(to_append)
@@ -97,71 +98,65 @@ def tokeniser(code):
         state=""
         alt=""
         last=to_append
-    for y in code:
-        msg=""
-        for x in y:
-            execd=False
-            if x==" " and cache!="" and state!="str" and state!="expr":
+    for x in code:
+        execd=False
+        if x==" " and cache!="" and state!="str" and state!="expr":
+            execd=True
+            appender(cache)
+        if x==" " and execd==False and state!="str" and state!="expr":
+            continue
+        if x=="'":
+            if msg=="":
                 execd=True
-                appender(cache)
-            if x==" " and execd==False and state!="str" and state!="expr":
-                continue
-            if x=="'":
-                if msg=="":
-                    execd=True
-                    state="str"
-                    msg="first_quote"
-                elif msg=="first_quote":
-                    msg=""
-            if state=="str":
-                execd=True
-                cache+=x
-            if x=="'" and state=="str" and msg!="first_quote":
-                execd=True
-                appender(cache)
-            if x==";" and cache!="":
-                execd=True
-                appender(cache)
-            elif x==";":
-                execd=True
-                state=""
+                state="str"
+                msg="first_quote"
+            elif msg=="first_quote":
                 msg=""
-                cache=""
-            if x==")" and state=="expr" and msg==1:
-                execd=True
-                cache+=x
+        if state=="str":
+            execd=True
+            cache+=x
+        if x=="'" and state=="str" and msg!="first_quote":
+            execd=True
+            appender(cache)
+        if x==";" and cache!="" and state!="expr":
+            execd=True
+            appender(cache)
+            appender(x)
+        elif x==";" and state!="expr":
+            appender(x)
+        if x==")" and state=="expr":
+            cache+=x
+            msg=msg-1
+            if msg==0:
                 appender(cache)
-            elif x==")" and state=="expr" and msg!=1:
-                cache+=x
-                msg=msg-1
-                continue
-            if state=="expr" and alt!="first":
-                execd=True
-                cache+=x
-            if x=="(":
-                alt="first"
-                execd=True
-                state="expr"
-                cache+=x
-                if msg=="":
-                    msg=1
-                msg+=1
-            if x=="=" and state!="expr":
-                execd=True
-                if cache!="":
-                    appender(cache)
-                if last=="=":
-                    del tokens[len(tokens)-1]
-                    appender("==")
-                else:
-                    appender(x)
-                continue
-            if not execd:
-                cache+=x
+            continue
+        if x=="(":
+            execd=True
+            state="expr"
+            if msg=="":
+                msg=0
+            msg+=1
+        if state=="expr":
+            execd=True
+            cache+=x
+        if x=="=" and state!="expr":
+            execd=True
+            if cache!="":
+                appender(cache)
+            if last=="=":
+                del tokens[len(tokens)-1]
+                appender("==")
+            else:
+                appender(x)
+            continue
+        if not execd:
+            cache+=x
     return tokens
 
 def expr_pre_processor(expr):
     expr_tokens=break_expr(expr)
+    if " import " in expr_tokens:
+        raise Exception("Dangerous Input detected")
     new_expr_tokens=[]
     for x in expr_tokens:
         if x in list(symbol_table.keys()):
@@ -174,10 +169,17 @@ def expr_pre_processor(expr):
     new_expr=""
     for x in new_expr_tokens:
         new_expr+=str(x)
+    i=-1
+    for x in new_expr:
+        i+=1
+        if i==0:
+            continue
+        if new_expr[i]=="(" and new_expr[i-1]!="(":
+            raise Exception("Dangerous Input detected")
     return new_expr
 
 def expr_post_processor(prep_expr):
-    val=eval(prep_expr)
+    val=eval(prep_expr,{},{})
     if type(val)==type((1,2)):
         val=list(val)
         i=-1
@@ -197,9 +199,16 @@ def parser(tokenz,debug=True):
         global symbol_table
         for x in tokenz:
             i+=1
-            if i not in ignore:
+            if i not in ignore and x!=";":
+                args=0
+                n=0
+                while True:
+                    n+=1
+                    if tokenz[i+n]==";":
+                        break
+                    args+=1
                 if x == "var":
-                    if tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in list(symbol_table.keys())) and is_valid_var_name(tokenz[i+1]):
+                    if args==3 and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in list(symbol_table.keys())) and is_valid_var_name(tokenz[i+1]):
                         if tokenz[i+3] in list(symbol_table.keys()):
                             symbol_table[tokenz[i+1]]=refactor_temp(symbol_table[tokenz[i+3]])
                         elif tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")":
@@ -224,11 +233,11 @@ def parser(tokenz,debug=True):
                         error()
                 if x == "list":
                     list_operators=["append","remove"]
-                    if tokenz[i+1] not in list(symbol_table.keys()) and is_valid_var_name(tokenz[i+1]) and tokenz[i+1] not in list_operators and tokenz[i+1] not in identifiers:
+                    if args==1 and tokenz[i+1] not in list(symbol_table.keys()) and is_valid_var_name(tokenz[i+1]) and tokenz[i+1] not in list_operators and tokenz[i+1] not in identifiers:
                         symbol_table[tokenz[i+1]]=[]
                         ignore.append(i+1)
                         continue
-                    if tokenz[i+1] == "append" and tokenz[i+2] in list(symbol_table.keys()) and type(symbol_table[tokenz[i+2]])==type([]) and tokenz[i+3] not in identifiers:
+                    if args==3 and tokenz[i+1] == "append" and tokenz[i+2] in list(symbol_table.keys()) and type(symbol_table[tokenz[i+2]])==type([]) and tokenz[i+3] not in identifiers:
                         if tokenz[i+3] in list(symbol_table.keys()):
                             symbol_table[tokenz[i+2]].append(symbol_table[tokenz[i+3]])
                             ignore.append(i+1)
@@ -246,7 +255,7 @@ def parser(tokenz,debug=True):
                         ignore.append(i+2)
                         ignore.append(i+3)
                         continue
-                    if tokenz[i+1] == "remove" and tokenz[i+2] in list(symbol_table.keys()) and type(symbol_table[tokenz[i+2]])==type([]) and tokenz[i+3] not in identifiers:
+                    if args==3 and tokenz[i+1] == "remove" and tokenz[i+2] in list(symbol_table.keys()) and type(symbol_table[tokenz[i+2]])==type([]) and tokenz[i+3] not in identifiers:
                         if tokenz[i+3] in list(symbol_table.keys()):
                             symbol_table[tokenz[i+2]].remove(symbol_table[tokenz[i+3]])
                             ignore.append(i+1)
@@ -265,7 +274,7 @@ def parser(tokenz,debug=True):
                         ignore.append(i+3)
                         continue
                 if x=="print":
-                    if debug:
+                    if debug and args==1:
                         if tokenz[i+1] not in identifiers:
                             ignore.append(i+1)
                             if tokenz[i+1] in list(symbol_table.keys()):
@@ -284,7 +293,7 @@ def parser(tokenz,debug=True):
                             ignore.append(i+1)
                         continue
                 if x=="tx":
-                    if tokenz[i+1] not in identifiers and tokenz[i+2] not in identifiers:
+                    if args==3 and tokenz[i+1] not in identifiers and tokenz[i+2] not in identifiers:
                         amount=""
                         receiver=""
                         if is_num(tokenz[i+1]):
@@ -313,7 +322,7 @@ def parser(tokenz,debug=True):
                         ignore.append(i+2)
                         continue
                 if x=="if":
-                    if symbol_table[tokenz[i+1]]:
+                    if expr_post_processor(expr_pre_processor(tokenz[i+1])):
                         ignore.append(i+1)
                         ignore.append(i+2)
                         internal(tokeniser(tokenz[i+2][1:-1]+";"))
