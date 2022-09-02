@@ -1,4 +1,3 @@
-symbol_table={}
 def is_num(chk):
     try:
         float(chk)
@@ -189,10 +188,10 @@ def expr_post_processor(prep_expr):
                 val[i]=float(x)
     return val
 
-def parser(tokenz,debug=True):
-    identifiers=["var","list","print","if","tx",";","int","str","float"]
+def parser(tokenz,st={},debug=True):
     global symbol_table
-    symbol_table={}
+    symbol_table=st
+    identifiers=["var","list","print","if","tx",";","int","str","float"]
     def internal(tokenz):
         i=-1
         ignore=[]
@@ -344,8 +343,9 @@ def parser(tokenz,debug=True):
                         print(f"Syntax Error : {x} is an invalid token")
                     error()
     internal(tokenz)
+    return symbol_table
 
-def run(script,debug=True):
+def run(script,symbol_table={},debug=True):
     try:
         parse_tokens=tokeniser(script)
     except:
@@ -353,7 +353,7 @@ def run(script,debug=True):
             print("Problem while generating tokens")
         error()
     try:
-        parser(parse_tokens,debug)
+        return parser(parse_tokens,symbol_table,debug)
     except:
         if debug:
             print("Problem while parsing tokens")
