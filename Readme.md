@@ -1,6 +1,6 @@
 ## Example
 ```python
-import vitality
+import vengine
 script="print 'Hello world.'"
-vitality.run(script)
+vengine.run(script)
 ```
