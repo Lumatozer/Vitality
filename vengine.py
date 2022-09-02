@@ -71,14 +71,15 @@ def break_expr(expr):
             cache=""
     return tokens
 
-def refactor_temp(str):
-    if str[0] == "'" and str[-1]=="'":
-        return str[1:-1]
+def refactor_temp(data):
+    data=str(data)
+    if data[0] == "'" and data[-1]=="'":
+        return data[1:-1]
     try:
-        return float(str)
+        return float(data)
     except:
         pass
-    return str
+    return data
 
 def tokeniser(code):
     global tokens,cache,state,alt,last
