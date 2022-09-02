@@ -149,7 +149,7 @@ def tokeniser(code):
             else:
                 appender(x)
             continue
-        if not execd:
+        if not execd and x!=";":
             cache+=x
     return tokens
 
@@ -190,7 +190,7 @@ def expr_post_processor(prep_expr):
     return val
 
 def parser(tokenz,debug=True):
-    identifiers=["var","list","print","if","tx"]
+    identifiers=["var","list","print","if","tx",";","int","str","float"]
     global symbol_table
     symbol_table={}
     def internal(tokenz):
@@ -231,6 +231,18 @@ def parser(tokenz,debug=True):
                         if debug:
                             print("Syntax Error detected while defining variable.")
                         error()
+                if x=="int" and args==1:
+                    symbol_table[tokenz[i+1]]=int(float(symbol_table[tokenz[i+1]]))
+                    ignore.append(i+1)
+                    continue
+                if x=="float" and args==1:
+                    symbol_table[tokenz[i+1]]=float(symbol_table[tokenz[i+1]])
+                    ignore.append(i+1)
+                    continue
+                if x=="str" and args==1:
+                    symbol_table[tokenz[i+1]]=str(symbol_table[tokenz[i+1]])
+                    ignore.append(i+1)
+                    continue
                 if x == "list":
                     list_operators=["append","remove"]
                     if args==1 and tokenz[i+1] not in list(symbol_table.keys()) and is_valid_var_name(tokenz[i+1]) and tokenz[i+1] not in list_operators and tokenz[i+1] not in identifiers:
