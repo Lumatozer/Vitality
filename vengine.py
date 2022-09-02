@@ -179,6 +179,13 @@ def expr_pre_processor(expr):
             continue
         if new_expr[i]=="(" and new_expr[i-1]!="(":
             raise Exception("Dangerous Input detected")
+    i=-1
+    for x in new_expr:
+        i+=1
+        if i==0:
+            continue
+        if new_expr[i]=="*" and new_expr[i-1]=="*":
+            raise Exception("Dangerous Input detected")
     return new_expr
 
 def expr_post_processor(prep_expr):
