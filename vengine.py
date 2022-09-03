@@ -331,7 +331,7 @@ def parser(tokenz,st={},debug=True):
                             error()
                         if tokenz[i+2] in list(symbol_table.keys()) and is_valid_addr(symbol_table[tokenz[i+2]]):
                             receiver=symbol_table[tokenz[i+2]]
-                        elif is_valid_var_name(tokenz[i+2]):
+                        elif is_valid_addr(tokenz[i+2]):
                             receiver=tokenz[i+2]
                         else:
                             if debug:
@@ -345,6 +345,7 @@ def parser(tokenz,st={},debug=True):
                             error()
                         ignore.append(i+1)
                         ignore.append(i+2)
+                        ignore.append(i+3)
                         continue
                 if x=="if":
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])):
