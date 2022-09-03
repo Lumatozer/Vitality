@@ -363,9 +363,9 @@ def parser(tokenz,st={},debug=True):
                         continue
                 if x=="if" and args==2:
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])):
-                        ignore.append(i+1)
-                        ignore.append(i+2)
                         internal(tokeniser(tokenz[i+2][1:-1]+";"))
+                    ignore.append(i+1)
+                    ignore.append(i+2)
                     continue
                 if x=="function" and args==2:
                     if refactor_temp(tokenz[i+1]) not in list(symbol_table.keys()) and refactor_temp(tokenz[i+1]) not in list(funcs.keys()):
