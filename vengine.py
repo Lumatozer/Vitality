@@ -1,3 +1,6 @@
+from hmac import trans_36
+
+
 def ltz_round(num):
     return round(float(num),8)
 
@@ -203,14 +206,15 @@ def expr_post_processor(prep_expr):
         return val
 
 def parser(tokenz,st={},debug=True):
-    global symbol_table,funcs
+    global symbol_table,funcs,trans_36
+    trans=[]
     funcs={}
     symbol_table=st
     identifiers=["var","list","print","if","tx",";","int","str","float"]
     def internal(tokenz):
         i=-1
         ignore=[]
-        global symbol_table
+        global symbol_table,funcs,trans_36
         for x in tokenz:
             i+=1
             if i not in ignore and x!=";":
@@ -338,12 +342,14 @@ def parser(tokenz,st={},debug=True):
                             if debug:
                                 print("Invalid receiver",tokenz[i+2])
                             error()
-                        if debug:
-                            print("Tx",amount,receiver)
+                        curr=refactor_temp(tokenz[i+3])
                         if amount=="" or receiver=="":
                             if debug:
                                 print("Syntax Error while defining transaction")
                             error()
+                        if debug:
+                            print("Tx",amount,receiver)
+                            trans.append({"to":receiver,"amount":amount,"currency":curr})
                         ignore.append(i+1)
                         ignore.append(i+2)
                         ignore.append(i+3)
@@ -369,7 +375,7 @@ def parser(tokenz,st={},debug=True):
                         print(f"Syntax Error : {x} is an invalid token")
                     error()
     internal(tokenz)
-    return symbol_table
+    return symbol_table,trans
 
 def run(script,symbol_table={},debug=True):
     try:
