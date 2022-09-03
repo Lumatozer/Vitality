@@ -161,6 +161,13 @@ def tokeniser(code):
 
 def expr_pre_processor(expr):
     expr_tokens=break_expr(expr)
+    i=-1
+    for x in expr_tokens:
+        i+=1
+        if x=="true":
+            expr_tokens[i]=True
+        elif x=="false":
+            expr_tokens[i]==False
     if " import " in expr_tokens:
         raise Exception("Dangerous Input detected")
     new_expr_tokens=[]
