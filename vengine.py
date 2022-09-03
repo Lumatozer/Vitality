@@ -203,7 +203,8 @@ def expr_post_processor(prep_expr):
         return val
 
 def parser(tokenz,st={},debug=True):
-    global symbol_table
+    global symbol_table,funcs
+    funcs={}
     symbol_table=st
     identifiers=["var","list","print","if","tx",";","int","str","float"]
     def internal(tokenz):
@@ -347,12 +348,22 @@ def parser(tokenz,st={},debug=True):
                         ignore.append(i+2)
                         ignore.append(i+3)
                         continue
-                if x=="if":
+                if x=="if" and args==2:
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])):
                         ignore.append(i+1)
                         ignore.append(i+2)
                         internal(tokeniser(tokenz[i+2][1:-1]+";"))
                     continue
+                if x=="function" and args==2:
+                    if refactor_temp(tokenz[i+1]) not in list(symbol_table.keys()) and refactor_temp(tokenz[i+1]) not in list(funcs.keys()):
+                        ignore.append(i+1)
+                        ignore.append(i+2)
+                        funcs[tokenz[i+1]]=tokeniser(tokenz[i+2][1:-1]+";")
+                    continue
+                if x=="exec" and args==1:
+                    if tokenz[i+1] in list(funcs.keys()):
+                        ignore.append(i+1)
+                        internal(funcs[tokenz[i+1]])
                 else:
                     if debug:
                         print(f"Syntax Error : {x} is an invalid token")
@@ -362,6 +373,8 @@ def parser(tokenz,st={},debug=True):
 
 def run(script,symbol_table={},debug=True):
     try:
+        if '"' in script:
+            raise Exception('Double quote character " is not allowed')
         parse_tokens=tokeniser(script)
     except:
         if debug:
