@@ -75,6 +75,8 @@ def break_expr(expr):
         if cache=="in" or cache=="or" or cache=="and" or cache=="import":
             tokens.append(" "+cache+" ")
             cache=""
+    if cache!="":
+        tokens.append(cache)
     return tokens
 
 def refactor_temp(data):
