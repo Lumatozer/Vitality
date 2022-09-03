@@ -47,6 +47,10 @@ def break_expr(expr):
             cache=""
             msg=""
             continue
+        if x == "=" and x==tokens[len(tokens)-1]:
+            del tokens[len(tokens)-1]
+            tokens.append("==")
+            continue
         if x in operators:
             if cache!="":
                 tokens.append(cache)
@@ -164,12 +168,18 @@ def tokeniser(code):
 def expr_pre_processor(expr):
     expr_tokens=break_expr(expr)
     i=-1
+    new_exprs=[]
     for x in expr_tokens:
         i+=1
         if x=="true":
             expr_tokens[i]=True
+            new_exprs.append(True)
         elif x=="false":
             expr_tokens[i]==False
+            new_exprs.append(False)
+        else:
+            new_exprs.append(x)
+    expr_tokens=new_exprs
     if " import " in expr_tokens:
         raise Exception("Dangerous Input detected")
     new_expr_tokens=[]
