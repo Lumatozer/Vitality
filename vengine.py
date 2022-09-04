@@ -366,7 +366,6 @@ def parser(tokenz,st={},debug=True):
                                 print("Syntax Error while defining transaction")
                             error()
                         if debug:
-                            print("Tx",amount,receiver)
                             trans={"to":receiver,"amount":amount,"currency":curr}
                         ignore.append(i+1)
                         ignore.append(i+2)
