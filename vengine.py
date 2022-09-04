@@ -220,7 +220,9 @@ def expr_post_processor(prep_expr):
             if type(x)==type(1):
                 val[i]=ltz_round(x)
     try:
-        return ltz_round(val)
+        if type(val)!=type(True):
+            return ltz_round(val)
+        return val
     except:
         return val
 
