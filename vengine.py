@@ -399,17 +399,7 @@ def parser(tokenz,st={},debug=True):
     return symbol_table,trans
 
 def run(script,symbol_table={},debug=True):
-    try:
-        if '"' in script:
-            raise Exception('Double quote character " is not allowed')
-        parse_tokens=tokeniser(script)
-    except:
-        if debug:
-            print("Problem while generating tokens")
-        error()
-    try:
-        return parser(parse_tokens,symbol_table,debug)
-    except:
-        if debug:
-            print("Problem while parsing tokens")
-        error()
+    if '"' in script:
+        raise Exception('Double quote character " is not allowed')
+    parse_tokens=tokeniser(script)
+    return parser(parse_tokens,symbol_table,debug)
