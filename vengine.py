@@ -1,6 +1,3 @@
-from hmac import trans_36
-
-
 def ltz_round(num):
     return round(float(num),8)
 
@@ -227,15 +224,15 @@ def expr_post_processor(prep_expr):
         return val
 
 def parser(tokenz,st={},debug=True):
-    global symbol_table,funcs,trans_36
-    trans=[]
+    global symbol_table,funcs,trans
+    trans=None
     funcs={}
     symbol_table=st
     identifiers=["var","list","print","if","tx",";","int","str","float"]
     def internal(tokenz):
         i=-1
         ignore=[]
-        global symbol_table,funcs,trans_36
+        global symbol_table,funcs,trans
         for x in tokenz:
             i+=1
             if i not in ignore and x!=";":
@@ -370,7 +367,7 @@ def parser(tokenz,st={},debug=True):
                             error()
                         if debug:
                             print("Tx",amount,receiver)
-                            trans.append({"to":receiver,"amount":amount,"currency":curr})
+                            trans={"to":receiver,"amount":amount,"currency":curr}
                         ignore.append(i+1)
                         ignore.append(i+2)
                         ignore.append(i+3)
