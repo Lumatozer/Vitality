@@ -8,8 +8,8 @@ def is_num(chk):
     except:
         return False
 
-def error():
-    raise Exception("Error <3")
+def error(disc="<3"):
+    raise Exception(f"Error {disc}")
 
 def is_valid_var_name(varname):
     allowed="abcdefghijklmnopqrstuvwxyz"
@@ -188,6 +188,10 @@ def expr_pre_processor(expr):
                 new_expr_tokens.append(symbol_table[x])
             continue
         new_expr_tokens.append(x)
+    for x in new_expr_tokens:
+        if type(x)==type(0.1):
+            if x>18446744073709551616:
+                error("Integer Multiplication larger than 2**64")
     new_expr=""
     for x in new_expr_tokens:
         new_expr+=str(x)
@@ -266,7 +270,7 @@ def parser(tokenz,st={},debug=True):
                     else:
                         if debug:
                             print("Syntax Error detected while defining variable.")
-                        error()
+                        error("Syntax Error detected while defining variable.")
                 if x=="int" and args==1:
                     symbol_table[tokenz[i+1]]=int(ltz_round(symbol_table[tokenz[i+1]]))
                     ignore.append(i+1)
@@ -279,6 +283,11 @@ def parser(tokenz,st={},debug=True):
                     symbol_table[tokenz[i+1]]=str(symbol_table[tokenz[i+1]])
                     ignore.append(i+1)
                     continue
+                if x=="del" and args==1:
+                    if tokenz[i+1] in list(symbol_table.keys()):
+                        ignore.append(i+1)
+                        del symbol_table[tokenz[i+1]]
+                        continue
                 if x == "list":
                     list_operators=["append","remove"]
                     if args==1 and tokenz[i+1] not in list(symbol_table.keys()) and is_valid_var_name(tokenz[i+1]) and tokenz[i+1] not in list_operators and tokenz[i+1] not in identifiers:
@@ -335,7 +344,7 @@ def parser(tokenz,st={},debug=True):
                             continue
                         else:
                             print("Invalid print statement specified")
-                            error()
+                            error("Invalid print statement")
                     else:
                         if tokenz[i+1] not in identifiers:
                             ignore.append(i+1)
@@ -348,10 +357,12 @@ def parser(tokenz,st={},debug=True):
                             amount=ltz_round(tokenz[i+1])
                         elif tokenz[i+1] in list(symbol_table.keys()) and is_num(symbol_table[tokenz[i+1]]):
                             amount=ltz_round(symbol_table[tokenz[i+1]])
+                        elif tokenz[i+1][0]=="(" and tokenz[i+1][-1]==")":
+                            amount=expr_post_processor(expr_pre_processor(tokenz[i+1]))
                         else:
                             if debug:
                                 print("Invalid amount for transaction",tokenz[i+1])
-                            error()
+                            error("Invalid amount for transaction",tokenz[i+1])
                         if tokenz[i+2] in list(symbol_table.keys()) and is_valid_addr(symbol_table[tokenz[i+2]]):
                             receiver=symbol_table[tokenz[i+2]]
                         elif is_valid_addr(tokenz[i+2]):
@@ -359,12 +370,16 @@ def parser(tokenz,st={},debug=True):
                         else:
                             if debug:
                                 print("Invalid receiver",tokenz[i+2])
-                            error()
-                        curr=refactor_temp(tokenz[i+3])
+                            error("Invalid Receiver")
+                        
+                        if tokenz[i+3] in list(symbol_table.keys()):
+                            curr=symbol_table[tokenz[i+3]]
+                        else:
+                            curr=refactor_temp(tokenz[i+3])
                         if amount=="" or receiver=="":
                             if debug:
                                 print("Syntax Error while defining transaction")
-                            error()
+                            error("Syntax Error while defining transaction")
                         if debug:
                             trans={"to":receiver,"amount":amount,"currency":curr}
                         ignore.append(i+1)
@@ -373,7 +388,7 @@ def parser(tokenz,st={},debug=True):
                         continue
                 if x=="if" and args==2:
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])):
-                        internal(tokeniser(tokenz[i+2][1:-1]+";"))
+                        internal(tokeniser(tokenz[i+2][1:-1]))
                     ignore.append(i+1)
                     ignore.append(i+2)
                     continue
@@ -390,7 +405,7 @@ def parser(tokenz,st={},debug=True):
                 else:
                     if debug:
                         print(f"Syntax Error : {x} is an invalid token")
-                    error()
+                    error(f"Syntax Error : {x} is an invalid token")
     internal(tokenz)
     return symbol_table,trans
 
