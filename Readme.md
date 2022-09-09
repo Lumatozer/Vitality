@@ -58,7 +58,9 @@ list remove {list_name} {data_to_remove};
 ```
 If statements
 ```python
-if ({condition/variable}) ({code_to_execute_if_satisfied})
+if (condition or variable) (
+    #code here
+);
 ```
 Examples
 ```python
