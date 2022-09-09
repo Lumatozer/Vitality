@@ -99,8 +99,8 @@ To check if a variable name already exists
 if ('var_name' in vars) (
     print true;
 );
-Since vars is an environment variable you cannot modify its value
 ```
+Since vars is an environment variable you cannot modify its value
 ## Smart Contract Examples
 ### Funding Page
 ```python
