@@ -104,9 +104,6 @@ Since 'vars' is an environment variable, the script cannot modify its value dire
 ## Smart Contract Examples
 ### Funding Page
 ```python
-var txamount=10;
-var txsender='0d1eb95fa56ceb3d72c06dc1f04eb19495616afbcd3ec248b203e95f95196ba1';
-var txcurr='LTZ';
 var funding_page = '404cdd7bc109c432f8cc2443b45bcfe95980f5107215c645236e577929ac3e52';
 var fund_receiver = '1dd8754d7f4192e973e0774edd395251621322f386fc02fd6b267bf4ba982cc9';
 var percent = 10;
@@ -121,7 +118,4 @@ if (txcurr=='LTZ' and txsender != funding_page) (
 if (txcurr=='LTZ' and txsender==funding_page) (
     tx funding_page_money fund_receiver 'LTZ';
 );
-del txsender;
-del txamount;
-del txcurr;
 ```
