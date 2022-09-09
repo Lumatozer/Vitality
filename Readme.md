@@ -14,10 +14,9 @@ var {variable_name} = {variable_value};
 Example
 var a = 10;
 ```
-To change a variable's value  you also need to use the above syntax
-\
+To change a variable's value  you also need to use the above syntax.
 ## Pre Assigned Variables
-When a smart contract is invoked, 4 variables are injected into the code.\
+When a smart contract is invoked, 4 variables are injected into the code.
 ```python
 1. txsender (Address of Invoker)
 2. txamount (Amount sent to contract)
