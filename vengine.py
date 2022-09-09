@@ -359,7 +359,9 @@ def parser(tokenz,st={},debug=True):
                             ignore.append(i+1)
                         continue
                 if x=="tx":
+                    print("Invoked TX")
                     if args==3 and tokenz[i+1] not in identifiers and tokenz[i+2] not in identifiers:
+                        print("Invoked TX 2")
                         amount=""
                         receiver=""
                         if is_num(tokenz[i+1]):
@@ -389,8 +391,7 @@ def parser(tokenz,st={},debug=True):
                             if debug:
                                 print("Syntax Error while defining transaction")
                             error("Syntax Error while defining transaction")
-                        if debug:
-                            trans={"to":receiver,"amount":amount,"currency":curr}
+                        trans={"to":receiver,"amount":amount,"currency":curr}
                         ignore.append(i+1)
                         ignore.append(i+2)
                         ignore.append(i+3)
