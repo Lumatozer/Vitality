@@ -207,7 +207,7 @@ def expr_pre_processor(expr):
         i+=1
         if i==0:
             continue
-        if new_expr[i]=="*" and new_expr[i-1]=="*":
+        if new_expr[i]=="*" and (new_expr[i-1]=="*" or new_expr[i-1]=="'"):
             raise Exception("Dangerous Input detected")
     return new_expr
 
