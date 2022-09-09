@@ -100,7 +100,7 @@ if ('var_name' in vars) (
     print true;
 );
 ```
-Since vars is an environment variable you cannot modify its value
+Since 'vars' is an environment variable, the script cannot modify its value directly.
 ## Smart Contract Examples
 ### Funding Page
 ```python
