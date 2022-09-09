@@ -359,9 +359,7 @@ def parser(tokenz,st={},debug=True):
                             ignore.append(i+1)
                         continue
                 if x=="tx":
-                    print("Invoked TX")
                     if args==3 and tokenz[i+1] not in identifiers and tokenz[i+2] not in identifiers:
-                        print("Invoked TX 2")
                         amount=""
                         receiver=""
                         if is_num(tokenz[i+1]):
