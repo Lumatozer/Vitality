@@ -101,6 +101,32 @@ if ('var_name' in vars) (
 );
 ```
 Since 'vars' is an environment variable, the script cannot modify its value directly.
+
+To create a function
+```python
+function {function_name} ({function_code});
+```
+Example
+```python
+function main (
+    print LTZ;
+);
+```
+To execute Functions;
+```python
+exec {func_name};
+```
+You can return data from inside of functions also using the "omit" token
+```python
+function main (
+    omit LTZ;
+);
+```
+The syntax for executing such function which return a value is
+```python
+exec {func_name} {var_name};
+```
+This stores the value omitted by the function in the variable provided.
 ## Smart Contract Examples
 ### Funding Page
 ```python

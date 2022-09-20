@@ -233,16 +233,17 @@ def expr_post_processor(prep_expr):
         return val
 
 def parser(tokenz,st={},debug=True):
-    global symbol_table,funcs,trans
+    global symbol_table,funcs,trans,omit
     trans=None
     funcs={}
+    omit=None
     symbol_table=st
     symbol_table["vars"]=list(symbol_table.keys())
     identifiers=["var","list","print","if","tx",";","int","str","float"]
-    def internal(tokenz):
+    def internal(tokenz,infunc=False):
         i=-1
         ignore=[]
-        global symbol_table,funcs,trans
+        global symbol_table,funcs,trans,omit
         for x in tokenz:
             i+=1
             if i not in ignore and x!=";":
@@ -406,10 +407,31 @@ def parser(tokenz,st={},debug=True):
                         ignore.append(i+2)
                         funcs[tokenz[i+1]]=tokeniser(tokenz[i+2][1:-1]+";")
                     continue
-                if x=="exec" and args==1:
-                    if tokenz[i+1] in list(funcs.keys()):
+                if x=="exec" and args==1 or (args==2 and is_valid_var_name(tokenz[i+2])):
+                    if infunc:
+                        error("Cannot execute functions inside of running function instances")
+                    if tokenz[i+1] in list(funcs.keys()) and args==1:
                         ignore.append(i+1)
-                        internal(funcs[tokenz[i+1]])
+                        internal(funcs[tokenz[i+1]],infunc=True)
+                        omit=None
+                        continue
+                    if tokenz[i+1] in list(funcs.keys()) and args==2:
+                        ignore.append(i+1)
+                        ignore.append(i+2)
+                        internal(funcs[tokenz[i+1]],infunc=True)
+                        symbol_table[tokenz[i+2]]=omit
+                        symbol_table["vars"].append(tokenz[i+2])
+                        omit=None
+                        continue
+                if x=="omit" and args==1:
+                    ignore.append(i+1)
+                    if tokenz[i+1][0]=="(" and tokenz[i+1][-1]==")":
+                        omit=expr_post_processor(expr_pre_processor(tokenz[i+1]))
+                    elif tokenz[i+1] in list(symbol_table.keys()):
+                        omit=symbol_table[tokenz[i+1]]
+                    else:
+                        omit=tokenz[i+1]
+                    break
                 else:
                     if debug:
                         print(f"Syntax Error : {x} is an invalid token")
