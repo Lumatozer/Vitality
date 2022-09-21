@@ -1,12 +1,6 @@
 def error(disc="<3"):
     raise Exception(f"Error {disc}")
 
-def gas_handle(amount):
-    global gas
-    #if gas+amount>10000:
-        #error("Gas")
-    gas+=amount
-
 def ltz_round(num):
     return round(float(num),8)
 
@@ -243,6 +237,10 @@ def parser(tokenz,st={},debug=True,gas=False):
     if gas:
         global fees
         fees=0
+        st["txamount"]=1
+        st["txsender"]="x"*64
+        st["txcurr"]="LTZ"
+        st["txmsg"]="test"
     trans=None
     funcs={}
     omit=None
