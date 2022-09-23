@@ -529,3 +529,12 @@ def run(script,symbol_table={},debug=True,gas=False):
         raise Exception('Double quote character " is not allowed')
     parse_tokens=tokeniser(script)
     return parser(parse_tokens,symbol_table,debug,gas)
+
+if __name__=="__main__":
+    env={}
+    while True:
+        line=input(">> ")
+        try:
+            env=run(line,env)[0]
+        except Exception as e:
+            print(e)
