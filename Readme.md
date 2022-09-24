@@ -139,9 +139,7 @@ This stores the value omitted by the function in the variable provided.
 var funding_page = '404cdd7bc109c432f8cc2443b45bcfe95980f5107215c645236e577929ac3e52';
 var fund_receiver = '1dd8754d7f4192e973e0774edd395251621322f386fc02fd6b267bf4ba982cc9';
 var percent = 10;
-if ('funding_page_money' not in vars) (
-var funding_page_money = 0;
-);
+const funding_page_money = 0;
 if (txcurr=='LTZ' and txsender != funding_page) (
     var sending_amount = ((txamount/100)*(100-percent));
     tx sending_amount fund_receiver 'LTZ';
