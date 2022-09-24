@@ -264,9 +264,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
     global symbol_table,funcs,trans,omit
     if compile:
         global compiled,indents
-        compiled="""
-tx={}
-        """
+        compiled="tx={}"
         indents=0
         def add_compile(script):
             global compiled,indents
