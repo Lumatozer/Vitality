@@ -450,7 +450,6 @@ tx={}
                         indents+=1
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])):
                         internal(tokeniser(tokenz[i+2][1:-1]))
-                        indents-=1
                     elif compile:
                         internal(tokeniser(tokenz[i+2][1:-1]))
                         indents-=1
