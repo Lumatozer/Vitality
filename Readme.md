@@ -86,6 +86,10 @@ To change a variable to float type
 ```python
 float {var_name};
 ```
+To change a variable to int type
+```python
+int {var_name};
+```
 To change a variable to str type
 ```python
 str {var_name};
