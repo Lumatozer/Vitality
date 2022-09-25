@@ -86,23 +86,13 @@ To change a variable to float type
 ```python
 float {var_name};
 ```
-To change a variable to int type
-```python
-int {var_name};
-```
 To change a variable to str type
 ```python
 str {var_name};
 ```
-To make a variable which is initialized only once
-```python
-const {variable_name} = {variable_value};
-Example
-const a = 10;
-```
 To check if a variable name already exists
 ```python
-if ('var_name' in vars) (
+if ('var_name_in_quotes' in vars) (
     print true;
 );
 ```
