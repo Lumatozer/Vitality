@@ -36,7 +36,7 @@ def is_valid_addr(addr):
 
 def break_expr(expr):
     tokens=[]
-    operators=["*","/","%","+","-","="]
+    operators=["*","/","%","+","-","=","<",">"]
     cache=""
     msg=""
     for x in expr:
@@ -83,6 +83,14 @@ def break_expr(expr):
                     msg=""
             tokens.append(",")
             continue
+        if x==" " and msg=="":
+            if cache=="":
+                pass
+            else:
+                if cache!=" ":
+                    tokens.append(cache)
+                    cache=""
+                    msg=""
         if x=="'":
             if msg!="str":
                 msg="str"
@@ -182,7 +190,7 @@ def tokeniser(code):
     return tokens
 
 def expr_pre_processor(expr,partial=False):
-    operators="%/+-*,"
+    operators="%/+-*,<>"
     expr_tokens=break_expr(expr)
     i=-1
     new_exprs=[]
