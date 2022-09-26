@@ -626,7 +626,6 @@ def run(script,symbol_table={},debug=True,gas=False,compile=False):
     if '"' in script or '{' in script or '}' in script:
         raise Exception('Double quote character " is not allowed')
     parse_tokens=tokeniser(script)
-    print(parse_tokens)
     return parser(parse_tokens,symbol_table,debug,gas,compile)
 
 if __name__=="__main__":
