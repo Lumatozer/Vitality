@@ -314,8 +314,11 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                     if gas:
                         fees+=1
                     n+=1
-                    if tokenz[i+n]==";":
-                        break
+                    try:
+                        if tokenz[i+n]==";":
+                            break
+                    except:
+                        error("Missing ';' for line break")
                     args+=1
                 if x == "var":
                     if args==3 and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]) and tokens[i+1]!="tx" and tokens[i+1]!="vars":
