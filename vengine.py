@@ -209,7 +209,7 @@ def expr_pre_processor(expr,partial=False):
         raise Exception("Dangerous Input detected")
     new_expr_tokens=[]
     for x in expr_tokens:
-        if x in list(symbol_table.keys()):
+        if x in symbol_table["vars"]:
             if type(symbol_table[x])==type("") and not partial:
                 new_expr_tokens.append("'"+symbol_table[x]+"'")
             elif partial:
@@ -313,9 +313,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         break
                     args+=1
                 if x == "var":
-                    if args==3 and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]) and tokens[i+1]!="tx" and tokens[i+1]!="vars":
-                        if tokenz[i+3]=="vars":
-                            error("Cannot change environment variables")
+                    if args==3 and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]) and tokens[i+1]!="tx" and tokens[i+1]!="vars" and tokens[i+1]!="tx":
                         if tokenz[i+3] in symbol_table['vars']:
                             if gas:
                                 fees+=len(str(tokenz[i+1]))
@@ -332,7 +330,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                             if type(value)==type((1,2)):
                                 value=list(value)
                             if compile:
-                                add_compile(f"{tokenz[i+1]}={tokenz[i+3]}")
+                                add_compile(f"{tokenz[i+1]}=[{tokenz[i+3][1:-1]}]")
                             symbol_table[tokenz[i+1]]=value
                         elif tokenz[i+3]=="true" or tokenz[i+3]=='false':
                             if gas:
@@ -367,6 +365,59 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         if debug:
                             print("Syntax Error detected while defining variable.")
                         error("Syntax Error detected while defining variable.")
+                if x=="append" and args==2 and is_valid_var_name(tokenz[i+1]):
+                    if tokenz[i+2][0]=="(" and tokenz[i+2][-1]==")":
+                        symbol_table[tokenz[i+1]].append(expr_post_processor(expr_pre_processor(tokenz[i+2])))
+                    elif tokenz[i+2] in symbol_table["vars"]:
+                        symbol_table[tokenz[i+1]].append(symbol_table[tokenz[i+2]])
+                    else:
+                        symbol_table[tokenz[i+1]].append(refactor_temp(tokenz[i+2]))
+                    if tokenz[i+1] not in symbol_table["vars"]:
+                        symbol_table["vars"].append(tokenz[i+1])
+                    if compile:
+                        add_compile(f"{tokenz[i+1]}.append({tokenz[i+2]})")
+                    if gas:
+                        fees+=len(str(f"{tokenz[i+1]}={symbol_table[tokenz[i+2]]}"))
+                    ignore.append(i+1)
+                    ignore.append(i+2)
+                    continue
+                if x=="remove" and args==2 and is_valid_var_name(tokenz[i+1]):
+                    if tokenz[i+2][0]=="(" and tokenz[i+2][-1]==")":
+                        symbol_table[tokenz[i+1]].remove(expr_post_processor(expr_pre_processor(tokenz[i+2])))
+                    elif tokenz[i+2] in symbol_table["vars"]:
+                        symbol_table[tokenz[i+1]].remove(symbol_table[tokenz[i+2]])
+                    else:
+                        symbol_table[tokenz[i+1]].remove(refactor_temp(tokenz[i+2]))
+                    if tokenz[i+1] not in symbol_table["vars"]:
+                        symbol_table["vars"].remove(tokenz[i+1])
+                    if compile:
+                        add_compile(f"{tokenz[i+1]}.remove({tokenz[i+2]})")
+                    if gas:
+                        fees+=len(str(f"{tokenz[i+1]}={symbol_table[tokenz[i+2]]}"))
+                    ignore.append(i+1)
+                    ignore.append(i+2)
+                    continue
+                if x=="store" and args==3 and is_valid_var_name(tokenz[i+3]) and tokenz[i+1] in symbol_table["vars"] and type(symbol_table[tokenz[i+1]])==type([]) and (tokenz[i+2] in symbol_table["vars"] or is_num(tokenz[i+2])):
+                    val=None
+                    if tokenz[i+2] in symbol_table["vars"]:
+                        val=int(symbol_table[tokenz[i+2]])
+                    else:
+                        val=int(tokenz[i+2])
+                    try:
+                        symbol_table[tokenz[i+1]][val]
+                    except:
+                        error("Invalid index for list")
+                    symbol_table[tokenz[i+3]]=symbol_table[tokenz[i+1]][val]
+                    if tokenz[i+2] not in symbol_table["vars"]:
+                        symbol_table["vars"].append(tokenz[i+2])
+                    if compile:
+                        add_compile(f"{tokenz[i+3]}={tokenz[i+1]}[{tokenz[i+2]}]")
+                    if gas:
+                        fees+=len(str(symbol_table[tokenz[i+1]][val]))
+                    ignore.append(i+1)
+                    ignore.append(i+2)
+                    ignore.append(i+3)
+                    continue
                 if x=="print" and args==1:
                     ignore.append(i+1)
                     if debug:
@@ -534,7 +585,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                             add_compile(f"return {tokenz[i+1]}")
                         if gas:
                             fees+=len(str(expr_pre_processor(tokenz[i+1])))
-                    elif tokenz[i+1] in list(symbol_table.keys()):
+                    elif tokenz[i+1] in symbol_table["vars"]:
                         omit=symbol_table[tokenz[i+1]]
                         if compile:
                             add_compile(f"return {tokenz[i+1]}")
