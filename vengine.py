@@ -141,10 +141,11 @@ def tokeniser(code):
         if x==" " and cache!="" and state!="str" and state!="expr" and msg!="first_quote":
             execd=True
             appender(cache)
-        if x==" " and cache=="" and state!="str" and state!="expr" and msg!="first_quote":
+        elif x==" " and cache=="":
             execd=True
         if execd==False and x==" " and state=="str":
             cache+=x
+            continue
         if x=="'":
             if msg=="":
                 execd=True
