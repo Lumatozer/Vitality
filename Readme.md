@@ -40,7 +40,7 @@ For example if i want to store the literal 'ltz' in a variable.
 ```python
 var a = ltz;
 ```
-But this cannot be done is the string contains any white spaces.
+But this cannot be done is the string contains any white spaces ro if you want to compile the code and upload it as a smart contract.
 
 There are two methods to create a list/array
 ```python
