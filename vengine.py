@@ -513,10 +513,10 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         internal(tokeniser(tokenz[i+2][1:-1]))
                     if compile:
                         add_compile(f"if {expr_pre_processor(tokenz[i+1],partial=True)}:")
-                        indents+=1
-                    if expr_post_processor(expr_pre_processor(tokenz[i+1])):
+                    if expr_post_processor(expr_pre_processor(tokenz[i+1])) and not compile:
                         internal(tokeniser(tokenz[i+2][1:-1]))
                     elif compile:
+                        indents+=1
                         internal(tokeniser(tokenz[i+2][1:-1]))
                         indents-=1
                     ignore.append(i+1)
@@ -533,11 +533,9 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                             add_compile(f"def {tokenz[i+1]}():")
                             indents+=1
                             internal(tokeniser(tokenz[i+2][1:-1]+";"))
-                            add_func="for x in locals().copy():"
-                            add_compile(add_func)
+                            add_compile("for x in locals().copy():")
                             indents+=1
-                            add_func="globals()[x]=locals()[x]"
-                            add_compile(add_func)
+                            add_compile("globals()[x]=locals()[x]")
                             indents-=1
                             indents-=1
                         funcs[tokenz[i+1]]=tokeniser(tokenz[i+2][1:-1]+";")
@@ -549,15 +547,17 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         ignore.append(i+1)
                         if compile:
                             add_compile(f"{tokenz[i+1]}()")
-                        internal(funcs[tokenz[i+1]],infunc=True)
+                        else:
+                            internal(funcs[tokenz[i+1]],infunc=True)
                         omit=None
                         continue
                     if tokenz[i+1] in list(funcs.keys()) and args==2:
                         ignore.append(i+1)
                         ignore.append(i+2)
                         if compile:
-                            add_compile(f"{tokenz[i+2]}={tokenz[i+1]}()")
-                        internal(funcs[tokenz[i+1]],infunc=True)
+                            add_compile(f"{tokenz[i+1]}()")
+                        else:
+                            internal(funcs[tokenz[i+1]],infunc=True)
                         if gas:
                             fees+=len(str(tokenz[i+2]))
                             fees+=len(str(omit))
