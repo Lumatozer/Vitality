@@ -22,6 +22,8 @@ def is_valid_var_name(varname):
         varname=varname.replace(x,"")
     if varname=="":
         return True
+    else:
+        return False
 
 def is_valid_addr(addr):
     allowed="abcdefghijklmnopqrstuvwxyz"
@@ -118,7 +120,7 @@ def refactor_temp(data):
     return data
 
 def tokeniser(code):
-    global tokens,cache,state,alt,last
+    global tokens,cache,state,alt,last,msg
     code=code.replace("\n","")
     tokens=[]
     cache=""
@@ -127,7 +129,7 @@ def tokeniser(code):
     last=""
     msg=""
     def appender(to_append):
-        global tokens,cache,state,alt,last
+        global tokens,cache,state,alt,last,msg
         tokens.append(to_append)
         msg=""
         cache=""
@@ -136,11 +138,13 @@ def tokeniser(code):
         last=to_append
     for x in code:
         execd=False
-        if x==" " and cache!="" and state!="str" and state!="expr":
+        if x==" " and cache!="" and state!="str" and state!="expr" and msg!="first_quote":
             execd=True
             appender(cache)
-        if x==" " and execd==False and state!="str" and state!="expr":
-            continue
+        if x==" " and cache=="" and state!="str" and state!="expr" and msg!="first_quote":
+            execd=True
+        if execd==False and x==" " and state=="str":
+            cache+=x
         if x=="'":
             if msg=="":
                 execd=True
@@ -148,7 +152,8 @@ def tokeniser(code):
                 msg="first_quote"
             elif msg=="first_quote":
                 msg=""
-        if state=="str":
+                cache+="'"
+        if state=="str" and msg=="first_quote":
             execd=True
             cache+=x
         if x=="'" and state=="str" and msg!="first_quote":
@@ -313,7 +318,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         break
                     args+=1
                 if x == "var":
-                    if args==3 and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]) and tokens[i+1]!="tx" and tokens[i+1]!="vars" and tokens[i+1]!="tx":
+                    if args==3 and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]) and tokens[i+1]!="tx" and tokens[i+1]!="vars":
                         if tokenz[i+3] in symbol_table['vars']:
                             if gas:
                                 fees+=len(str(tokenz[i+1]))
@@ -363,9 +368,9 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         continue
                     else:
                         if debug:
-                            print("Syntax Error detected while defining variable.")
+                            print("Syntax Error detected while defining variable.", (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")"),tokenz[i+3])
                         error("Syntax Error detected while defining variable.")
-                if x=="append" and args==2 and is_valid_var_name(tokenz[i+1]):
+                if x=="append" and args==2 and tokenz[i+1] in symbol_table["vars"]:
                     if tokenz[i+2][0]=="(" and tokenz[i+2][-1]==")":
                         symbol_table[tokenz[i+1]].append(expr_post_processor(expr_pre_processor(tokenz[i+2])))
                     elif tokenz[i+2] in symbol_table["vars"]:
@@ -381,7 +386,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                     ignore.append(i+1)
                     ignore.append(i+2)
                     continue
-                if x=="remove" and args==2 and is_valid_var_name(tokenz[i+1]):
+                if x=="remove" and args==2 and tokenz[i+1] in symbol_table["vars"]:
                     if tokenz[i+2][0]=="(" and tokenz[i+2][-1]==")":
                         symbol_table[tokenz[i+1]].remove(expr_post_processor(expr_pre_processor(tokenz[i+2])))
                     elif tokenz[i+2] in symbol_table["vars"]:
@@ -397,7 +402,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                     ignore.append(i+1)
                     ignore.append(i+2)
                     continue
-                if x=="store" and args==3 and is_valid_var_name(tokenz[i+3]) and tokenz[i+1] in symbol_table["vars"] and type(symbol_table[tokenz[i+1]])==type([]) and (tokenz[i+2] in symbol_table["vars"] or is_num(tokenz[i+2])):
+                if x=="store" and args==3 and tokenz[i+3] in symbol_table["vars"] and tokenz[i+1] in symbol_table["vars"] and type(symbol_table[tokenz[i+1]])==type([]) and (tokenz[i+2] in symbol_table["vars"] or is_num(tokenz[i+2])):
                     val=None
                     if tokenz[i+2] in symbol_table["vars"]:
                         val=int(symbol_table[tokenz[i+2]])
@@ -617,6 +622,7 @@ def run(script,symbol_table={},debug=True,gas=False,compile=False):
     if '"' in script or '{' in script or '}' in script:
         raise Exception('Double quote character " is not allowed')
     parse_tokens=tokeniser(script)
+    print(parse_tokens)
     return parser(parse_tokens,symbol_table,debug,gas,compile)
 
 if __name__=="__main__":
