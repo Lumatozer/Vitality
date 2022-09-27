@@ -278,11 +278,11 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
     global symbol_table,funcs,trans,omit
     if compile:
         global compiled,indents
-        compiled="tx={}"
+        compiled="tx={}\n"
         indents=0
         def add_compile(script):
             global compiled,indents
-            compiled+="\n"+("    "*indents)+script
+            compiled+=("    "*indents)+script+"\n"
     if gas:
         global fees
         fees=0
@@ -322,7 +322,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         error("Missing ';' for line break")
                     args+=1
                 if x == "var":
-                    if args==3 and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]) and tokens[i+1]!="tx" and tokens[i+1]!="vars":
+                    if args==3 and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]) and tokenz[i+1]!="tx" and tokenz[i+1]!="vars":
                         if tokenz[i+3] in symbol_table['vars']:
                             if gas:
                                 fees+=len(str(tokenz[i+1]))
@@ -513,10 +513,11 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         internal(tokeniser(tokenz[i+2][1:-1]))
                     if compile:
                         add_compile(f"if {expr_pre_processor(tokenz[i+1],partial=True)}:")
+                        indents+=1
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])) and not compile:
                         internal(tokeniser(tokenz[i+2][1:-1]))
                     elif compile:
-                        indents+=1
+                        add_compile("#")
                         internal(tokeniser(tokenz[i+2][1:-1]))
                         indents-=1
                     ignore.append(i+1)
@@ -532,6 +533,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         if compile:
                             add_compile(f"def {tokenz[i+1]}():")
                             indents+=1
+                            add_compile("#")
                             internal(tokeniser(tokenz[i+2][1:-1]+";"))
                             add_compile("for x in locals().copy():")
                             indents+=1
