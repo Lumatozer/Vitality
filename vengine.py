@@ -517,7 +517,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])) and not compile:
                         internal(tokeniser(tokenz[i+2][1:-1]))
                     elif compile:
-                        add_compile("#")
+                        add_compile("pass")
                         internal(tokeniser(tokenz[i+2][1:-1]))
                         indents-=1
                     ignore.append(i+1)
@@ -533,7 +533,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         if compile:
                             add_compile(f"def {tokenz[i+1]}():")
                             indents+=1
-                            add_compile("#")
+                            add_compile("pass")
                             internal(tokeniser(tokenz[i+2][1:-1]+";"))
                             add_compile("for x in locals().copy():")
                             indents+=1
