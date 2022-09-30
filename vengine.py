@@ -563,7 +563,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         ignore.append(i+1)
                         ignore.append(i+2)
                         if compile:
-                            add_compile(f"{tokenz[i+1]}()")
+                            add_compile(f"{tokenz[i+2]}={tokenz[i+1]}()")
                         else:
                             internal(funcs[tokenz[i+1]],infunc=True)
                         if gas:
