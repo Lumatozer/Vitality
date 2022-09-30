@@ -582,7 +582,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         continue
                 if x=="float" and args==1:
                     if tokenz[i+1] in symbol_table["vars"] and type(symbol_table["vars"])!=type(0.1):
-                        symbol_table[tokenz[i+1]]=float(tokenz[i+1])
+                        symbol_table[tokenz[i+1]]=float(symbol_table[tokenz[i+1]])
                         if compile:
                             add_compile(f"{tokenz[i+1]}=float({tokenz[i+1]})")
                         ignore.append(i+1)
