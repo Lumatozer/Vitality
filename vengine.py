@@ -575,7 +575,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         continue
                 if x=="str" and args==1:
                     if tokenz[i+1] in symbol_table["vars"] and type(symbol_table["vars"])!=type(""):
-                        symbol_table[tokenz[i+1]]=add_sq(tokenz[i+1])
+                        symbol_table[tokenz[i+1]]=add_sq(str(symbol_table[tokenz[i+1]]))
                         if compile:
                             add_compile(f"{tokenz[i+1]}=str({tokenz[i+1]})")
                         ignore.append(i+1)
