@@ -45,16 +45,14 @@ But this cannot be done is the string contains any white spaces ro if you want t
 There are two methods to create a list/array
 ```python
 var a = ();
-OR
-list a;
 ```
 To append something to an array
 ```python
-list append {list_name} {data_to_append};
+append {list_name} {data_to_append};
 ```
 To remove something from an array
 ```python
-list remove {list_name} {data_to_remove};
+remove {list_name} {data_to_remove};
 ```
 If statements
 ```python

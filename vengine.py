@@ -384,7 +384,10 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                     if tokenz[i+1] not in symbol_table["vars"]:
                         symbol_table["vars"].append(tokenz[i+1])
                     if compile:
-                        add_compile(f"{tokenz[i+1]}.append({tokenz[i+2]})")
+                        store=tokenz[i+2]
+                        if type(expr_post_processor(expr_pre_processor(store)))==type([]):
+                            store="["+store[1:-1]+"]"
+                        add_compile(f"{tokenz[i+1]}.append({store})")
                     if gas:
                         fees+=len(str(f"{tokenz[i+1]}={symbol_table[tokenz[i+2]]}"))
                     ignore.append(i+1)
@@ -400,7 +403,10 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                     if tokenz[i+1] not in symbol_table["vars"]:
                         symbol_table["vars"].remove(tokenz[i+1])
                     if compile:
-                        add_compile(f"{tokenz[i+1]}.remove({tokenz[i+2]})")
+                        store=tokenz[i+2]
+                        if type(expr_post_processor(expr_pre_processor(store)))==type([]):
+                            store="["+store[1:-1]+"]"
+                        add_compile(f"{tokenz[i+1]}.remove({store})")
                     if gas:
                         fees+=len(str(f"{tokenz[i+1]}={symbol_table[tokenz[i+2]]}"))
                     ignore.append(i+1)
