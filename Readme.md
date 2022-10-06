@@ -141,3 +141,24 @@ if (txcurr=='LTZ' and txsender==funding_page) (
     tx funding_page_money fund_receiver 'LTZ';
 );
 ```
+### LTZ && LTZ-S Exchange
+```python
+if ('ltz_bal' not in vars) (var ltz_bal=10;);
+if ('ltzs_bal' not in vars) (var ltzs_bal=10;);
+if ('dissolve' not in vars) (var dissolve=false;);
+if (txsender=='0x0' and txmsg=='dissolve') (var dissolve=true;);
+if (dissolve!=true) (
+if (txcurr=='LTZ' and txmsg!='reserve') (
+    var to_pay= (txamount*(ltz_bal/ltzs_bal));
+    tx to_pay txsender 'LTZS';
+    var ltz_bal=(ltz_bal+txamount);
+    var ltzs_bal=(ltzs_bal-to_pay);
+);
+if (txcurr=='LTZS' and txmsg!='reserve') (
+    var to_pay= (txamount*(ltzs_bal/ltz_bal));
+    tx to_pay txsender 'LTZ';
+    var ltzs_bal=(ltzs_bal+txamount);
+    var ltz_bal=(ltz_bal-to_pay);
+);
+);
+```
