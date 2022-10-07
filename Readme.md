@@ -143,8 +143,8 @@ if (txcurr=='LTZ' and txsender==funding_page) (
 ```
 ### LTZ && LTZ-S Exchange
 ```python
-if ('ltz_bal' not in vars) (var ltz_bal=10;);
-if ('ltzs_bal' not in vars) (var ltzs_bal=10;);
+if ('ltz_bal' not in vars) (var ltz_bal=0;);
+if ('ltzs_bal' not in vars) (var ltzs_bal=0;);
 if ('dissolve' not in vars) (var dissolve=false;);
 if (txsender=='0x0' and txmsg=='dissolve') (var dissolve=true;);
 if (dissolve!=true) (

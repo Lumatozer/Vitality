@@ -195,7 +195,7 @@ def tokeniser(code):
             cache+=x
     return tokens
 
-def expr_pre_processor(expr,partial=False):
+def expr_pre_processor(expr,partial=False,use_st=True):
     operators="%/+-*,<>"
     expr_tokens=break_expr(expr)
     i=-1
@@ -250,8 +250,10 @@ def expr_pre_processor(expr,partial=False):
             raise Exception("Dangerous Input detected")
     new_expr=""
     for x in new_expr_tokens:
-        if x=="vars":
+        if x=="vars" and use_st==False:
             new_expr+=str("list(locals().keys())")
+        elif x=="vars":
+            new_expr+=str(list(symbol_table.keys()))
         else:
             new_expr+=str(x)
     return new_expr
@@ -385,7 +387,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         symbol_table["vars"].append(tokenz[i+1])
                     if compile:
                         store=tokenz[i+2]
-                        if type(expr_post_processor(expr_pre_processor(store)))==type([]):
+                        if type(expr_post_processor(expr_pre_processor(store,use_st=False)))==type([]):
                             store="["+store[1:-1]+"]"
                         add_compile(f"{tokenz[i+1]}.append({store})")
                     if gas:
@@ -404,7 +406,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         symbol_table["vars"].remove(tokenz[i+1])
                     if compile:
                         store=tokenz[i+2]
-                        if type(expr_post_processor(expr_pre_processor(store)))==type([]):
+                        if type(expr_post_processor(expr_pre_processor(store,use_st=False)))==type([]):
                             store="["+store[1:-1]+"]"
                         add_compile(f"{tokenz[i+1]}.remove({store})")
                     if gas:
@@ -437,7 +439,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                     ignore.append(i+1)
                     if debug:
                         if tokenz[i+1] not in identifiers:
-                            if tokenz[i+1] in symbol_table['vars']:
+                            if tokenz[i+1] in symbol_table.keys():
                                 if gas:
                                     fees+=len(str(tokenz[i+1]))
                                 print(symbol_table[tokenz[i+1]])
@@ -518,7 +520,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         fees+=len(str(tokeniser(tokenz[i+2][1:-1])))
                         internal(tokeniser(tokenz[i+2][1:-1]))
                     if compile:
-                        add_compile(f"if {expr_pre_processor(tokenz[i+1],partial=True)}:")
+                        add_compile(f"if {expr_pre_processor(tokenz[i+1],partial=True,use_st=False)}:")
                         indents+=1
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])) and not compile:
                         internal(tokeniser(tokenz[i+2][1:-1]))
