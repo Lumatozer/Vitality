@@ -1,3 +1,12 @@
+import os,json
+
+def get_cwd():
+    return os.getcwd().replace("\\","/")
+def get_abs(path):
+    return os.path.abspath(path).replace("\\","/")
+def is_safe_path(path,folder=""):
+    return str(get_cwd()+f"/"+folder) in str(get_abs(get_cwd()+f"/"+folder+path))
+
 def error(disc="<3"):
     raise Exception(f"Error {disc}")
 
@@ -276,7 +285,7 @@ def expr_post_processor(prep_expr):
     except:
         return val
 
-def parser(tokenz,st={},debug=True,gas=False,compile=False):
+def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
     global symbol_table,funcs,trans,omit
     if compile:
         global compiled,indents
@@ -323,8 +332,22 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                     except:
                         error("Missing ';' for line break")
                     args+=1
+                if x=="require" and args==1 and is_safe_path(tokenz[i+1],working_dir) and os.path.exists(working_dir+tokenz[i+1]+".dat") and os.path.exists(working_dir+tokenz[i+1]):
+                    imported_vars=json.loads(open(working_dir+tokenz[i+1]).read())["symbol_table"]
+                    for x in imported_vars.keys():
+                        symbol_table[x]=imported_vars[x]
+                        symbol_table["vars"].append(x)
+                    if compile:
+                        add_compile("import json")
+                        add_compile(f"working_dir='{working_dir}'")
+                        add_compile(f"imported_vars=json.loads(open('{working_dir}'+'{tokenz[i+1]}').read())['symbol_table']")
+                        add_compile(f"for x in imported_vars: locals()[x]=imported_vars[x]")
+                    if gas:
+                        fees+=int(open(tokenz[i+1]+".dat").read())
+                    ignore.append(i+1)
+                    continue
                 if x == "var":
-                    if args==3 and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]) and tokenz[i+1]!="tx" and tokenz[i+1]!="vars":
+                    if (args==3) and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]) and tokenz[i+1]!="tx" and tokenz[i+1]!="vars":
                         if tokenz[i+3] in symbol_table['vars']:
                             if gas:
                                 fees+=len(str(tokenz[i+1]))
@@ -334,6 +357,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                                 add_compile(f"{tokenz[i+1]}={tokenz[i+3]}")
                             symbol_table[tokenz[i+1]]=refactor_temp(symbol_table[tokenz[i+3]])
                         elif tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")":
+                            print(tokenz[i+1],tokenz[i+2],tokenz[i+3])
                             value=expr_post_processor(expr_pre_processor(tokenz[i+3]))
                             if gas:
                                 fees+=len(str(expr_pre_processor(tokenz[i+3])))
@@ -341,7 +365,10 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                             if type(value)==type((1,2)):
                                 value=list(value)
                             if compile:
-                                add_compile(f"{tokenz[i+1]}=[{tokenz[i+3][1:-1]}]")
+                                if type(value)==type((1,2)):
+                                    add_compile(f"{tokenz[i+1]}=[{tokenz[i+3][1:-1]}]")
+                                else:
+                                    add_compile(f"{tokenz[i+1]}={tokenz[i+3][1:-1]}")
                             symbol_table[tokenz[i+1]]=value
                         elif tokenz[i+3]=="true" or tokenz[i+3]=='false':
                             if gas:
@@ -349,11 +376,11 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                                 fees+=5
                             if tokenz[i+3]=="true":
                                 if compile:
-                                    add_compile(f"{tokenz[i+1]}={add_sq(tokenz[i+3])}.capitalize()=='True'")
+                                    add_compile(f"{tokenz[i+1]}=True")
                                 symbol_table[tokenz[i+1]]=True 
                             else:
                                 if compile:
-                                    add_compile(f"{tokenz[i+1]}={add_sq(tokenz[i+3])}.capitalize()=='True'")
+                                    add_compile(f"{tokenz[i+1]}=False")
                                 symbol_table[tokenz[i+1]]=False
                         else:
                             if gas:
@@ -368,13 +395,15 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         ignore.append(i+1)
                         ignore.append(i+2)
                         ignore.append(i+3)
+                        if args==4:
+                            ignore.append(i+4)
                         symbol_table["vars"].append(tokenz[i+1])
                         if gas:
                             fees+=len(str(tokenz[i+1]))
                         continue
                     else:
                         if debug:
-                            print("Syntax Error detected while defining variable.", (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")"),tokenz[i+3])
+                            print("Syntax Error detected while defining variable.")
                         error("Syntax Error detected while defining variable.")
                 if x=="append" and args==2 and tokenz[i+1] in symbol_table["vars"]:
                     if tokenz[i+2][0]=="(" and tokenz[i+2][-1]==")":
@@ -504,7 +533,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         if amount=="" or receiver=="":
                             if debug:
                                 print("Syntax Error while defining transaction")
-                            error("Syntax Error while defining transaction")
+                            error(f"Syntax Error while defining transaction")
                         trans={"to":receiver,"amount":amount,"currency":curr}
                         if compile:
                             add_compile("tx={'to':receiver,'amount':amount,'currency':currency}")
@@ -518,7 +547,6 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
                         fees+=len(str(tokenz[i+1]))
                         fees+=len(str(tokenz[i+2]))
                         fees+=len(str(tokeniser(tokenz[i+2][1:-1])))
-                        internal(tokeniser(tokenz[i+2][1:-1]))
                     if compile:
                         add_compile(f"if {expr_pre_processor(tokenz[i+1],partial=True,use_st=False)}:")
                         indents+=1
@@ -632,11 +660,11 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False):
         return compiled
     return symbol_table,trans
 
-def run(script,symbol_table={},debug=True,gas=False,compile=False):
+def run(script,symbol_table={},debug=True,gas=False,compile=False,working_dir=""):
     if '"' in script or '{' in script or '}' in script:
         raise Exception('Double quote character " is not allowed')
     parse_tokens=tokeniser(script)
-    return parser(parse_tokens,symbol_table,debug,gas,compile)
+    return parser(parse_tokens,symbol_table,debug,gas,compile,working_dir)
 
 if __name__=="__main__":
     env={}
