@@ -357,7 +357,6 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                                 add_compile(f"{tokenz[i+1]}={tokenz[i+3]}")
                             symbol_table[tokenz[i+1]]=refactor_temp(symbol_table[tokenz[i+3]])
                         elif tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")":
-                            print(tokenz[i+1],tokenz[i+2],tokenz[i+3])
                             value=expr_post_processor(expr_pre_processor(tokenz[i+3]))
                             if gas:
                                 fees+=len(str(expr_pre_processor(tokenz[i+3])))
@@ -547,6 +546,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                         fees+=len(str(tokenz[i+1]))
                         fees+=len(str(tokenz[i+2]))
                         fees+=len(str(tokeniser(tokenz[i+2][1:-1])))
+                        internal(str(tokeniser(tokenz[i+2][1:-1])))
                     if compile:
                         add_compile(f"if {expr_pre_processor(tokenz[i+1],partial=True,use_st=False)}:")
                         indents+=1
