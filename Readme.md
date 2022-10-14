@@ -146,7 +146,7 @@ vars: funding_page fund_receiver percent funding_page_money sending_amount fundi
 var funding_page = '404cdd7bc109c432f8cc2443b45bcfe95980f5107215c645236e577929ac3e52';
 var fund_receiver = '1dd8754d7f4192e973e0774edd395251621322f386fc02fd6b267bf4ba982cc9';
 var percent = 10;
-if ('funding_page_money' not in vars) (var funding_page_money= 0;);
+if (funding_page_money == None) (var funding_page_money= 0;);
 if (txcurr=='LTZ' and txsender != funding_page) (
     var sending_amount = ((txamount/100)*(100-percent));
     tx sending_amount fund_receiver 'LTZ';
@@ -164,9 +164,9 @@ var booted=false;
 );
 
 if (booted) (
-if ('ltz_bal' not in vars) (var ltz_bal=1;);
-if ('ltzs_bal' not in vars) (var ltzs_bal=1;);
-if ('dissolve' not in vars) (var dissolve=false;);
+if (ltz_bal == None) (var ltz_bal=1;);
+if (ltzs_bal == None) (var ltzs_bal=1;);
+if (dissolve == None) (var dissolve=false;);
 if (txsender=='0x0' and txmsg=='dissolve') (var dissolve=true;);
 if (dissolve!=true) (
 if (txcurr=='LTZ' and txmsg!='reserve') (
@@ -193,6 +193,7 @@ if (txcurr=='LTZS' and txmsg=='reserve') (
 if (booted==false) (
     var ltz_bal=0;
     var ltzs_bal=0;
+    var booted=true;
 );
 ```
 ### Persistent script example 2
