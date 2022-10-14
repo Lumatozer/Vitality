@@ -715,6 +715,23 @@ def run(script,symbol_table={},debug=True,gas=False,compile=False,working_dir=""
     parse_tokens=tokeniser(script)
     return parser(parse_tokens,symbol_table,debug,gas,compile,working_dir)
 
+def reformatter(script):
+    new_script=""
+    indents=0
+    for x in script.replace("\n",""):
+        if x==")":
+            indents-=4
+            if new_script[-4:]=="    ":
+                new_script=new_script[:-4]
+        new_script+=(x)
+        if x==";":
+            new_script+="\n"+(" "*indents)
+        if x=="(":
+            indents+=4
+            new_script+="\n"+(" "*indents)
+    return new_script
+
+
 if __name__=="__main__":
     env={}
     while True:
