@@ -10,6 +10,7 @@ vengine.run(script)
 ## Basics
 To create a variable and assign a value to it
 ```python
+vars: {variable_name};
 var {variable_name} = {variable_value};
 Example
 var a = 10;
@@ -62,10 +63,12 @@ if (condition or variable) (
 ```
 Examples
 ```python
+vars: a;
 var a = (1==1);
 if (a) (print 1;);
 ```
 ```python
+vars: a;
 var a = (1==1);
 if (a) (
 print 1;
@@ -114,6 +117,11 @@ To execute Functions;
 ```python
 exec {func_name};
 ```
+To add a loop:
+```
+recursions: {number_of_loops};
+loop ({code_here});
+```
 You can return data from inside of functions also using the "omit" token
 ```python
 function main (
@@ -128,6 +136,7 @@ This stores the value omitted by the function in the variable provided.
 ## Smart Contract Examples
 ### Funding Page
 ```python
+vars: funding_page fund_receiver percent funding_page_money sending_amount funding_page_money booted ltz_bal ltzs_bal dissolve to_pay;
 var funding_page = '404cdd7bc109c432f8cc2443b45bcfe95980f5107215c645236e577929ac3e52';
 var fund_receiver = '1dd8754d7f4192e973e0774edd395251621322f386fc02fd6b267bf4ba982cc9';
 var percent = 10;
@@ -181,6 +190,7 @@ if (booted==false) (
 ```
 ### Persistent script example 2
 ```python
+vars: booted;
 if ('booted' not in vars) (
 var booted=false;
 );
