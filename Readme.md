@@ -4,8 +4,14 @@ The engine which interprets vitality is called Vengine (Vitality Engine).
 ## Example
 ```python
 import vengine
-script="print 'Hello world.'"
+script="print 'Hello world.';"
 vengine.run(script)
+```
+## Reformatter
+```
+import vengine
+script="print 'Hello world.';"
+print(vengine.reformatter(script))
 ```
 ## Basics
 To create a variable and assign a value to it
@@ -152,7 +158,8 @@ if (txcurr=='LTZ' and txsender==funding_page) (
 ```
 ### LTZ && LTZ-S Exchange
 ```python
-if ('booted' not in vars) (
+vars: booted ltz_bal ltzs_bal dissolve to_pay;
+if (booted == None) (
 var booted=false;
 );
 
@@ -191,7 +198,7 @@ if (booted==false) (
 ### Persistent script example 2
 ```python
 vars: booted;
-if ('booted' not in vars) (
+if (booted == None) (
 var booted=false;
 );
 
