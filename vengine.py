@@ -701,7 +701,6 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             internal(tokeniser(tokenz[i+1][1:-1]),inloop=True)
                     ignore.append(i+1)
                     continue
-                    continue
                 else:
                     error(f"Syntax Error : {x} is an invalid token on line {line_i}",line_i)
     internal(tokenz)
