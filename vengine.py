@@ -1,5 +1,4 @@
-from ast import arg
-import os,json
+import os,json,sys
 
 def get_cwd():
     return os.getcwd().replace("\\","/")
@@ -8,8 +7,9 @@ def get_abs(path):
 def is_safe_path(path,folder=""):
     return str(get_cwd()+f"/"+folder) in str(get_abs(get_cwd()+f"/"+folder+path))
 
-def error(disc="<3"):
-    raise Exception(f"Error {disc}")
+def error(disc="<3",line=1):
+    line_on_error=formatted_code.split('\n')[line-1]
+    sys.exit(f"Line {line} : {line_on_error} \n"+f"Error {disc}")
 
 def ltz_round(num):
     return round(float(num),8)
@@ -242,7 +242,7 @@ def expr_pre_processor(expr,partial=False,use_st=True):
     for x in new_expr_tokens:
         if type(x)==type(0.1):
             if x>18446744073709551616:
-                error("Integer larger than 2**64")
+                error("Integer larger than 2**64",0)
     new_expr=""
     for x in new_expr_tokens:
         new_expr+=str(x)
@@ -337,7 +337,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                         if tokenz[i+n]==";":
                             break
                     except:
-                        error("Missing ';' for line break")
+                        error(f"Missing ';' for line break on line {line_i}",line_i)
                     args+=1
                 line_i+=1
                 if x=='vars:' and args>0 and not vars_initialized:
@@ -432,9 +432,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             fees+=len(str(tokenz[i+1]))
                         continue
                     else:
-                        if debug:
-                            print("Syntax Error detected while defining variable.")
-                        error(f"Syntax Error detected while defining variable on line {line_i}")
+                        error(f"Syntax Error detected while defining variable on line {line_i}",line_i)
                 if x=="append" and args==2 and tokenz[i+1] in symbol_table["vars"]:
                     if tokenz[i+2][0]=="(" and tokenz[i+2][-1]==")":
                         symbol_table[tokenz[i+1]].append(expr_post_processor(expr_pre_processor(tokenz[i+2])))
@@ -482,7 +480,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                     try:
                         symbol_table[tokenz[i+1]][val]
                     except:
-                        error(f"Invalid index for list on line {line_i}")
+                        error(f"Invalid index for list on line {line_i}",line_i)
                     symbol_table[tokenz[i+3]]=symbol_table[tokenz[i+1]][val]
                     if tokenz[i+2] not in symbol_table["vars"]:
                         symbol_table["vars"].append(tokenz[i+2])
@@ -514,7 +512,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             continue
                         else:
                             print("Invalid print statement specified")
-                            error(f"Invalid print statement on line {line_i}")
+                            error(f"Invalid print statement on line {line_i}",line_i)
                     continue
                 if x=="tx":
                     if args==3 and tokenz[i+1] not in identifiers and tokenz[i+2] not in identifiers:
@@ -536,9 +534,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             if compile:
                                 add_compile(f"amount=float{tokenz[i+1]}")
                         else:
-                            if debug:
-                                print("Invalid amount for transaction",tokenz[i+1])
-                            error(f"Invalid amount for transaction {tokenz[i+1]} on line {line_i}")
+                            error(f"Invalid amount for transaction {tokenz[i+1]} on line {line_i}",line_i)
                         if tokenz[i+2] in symbol_table['vars'] and is_valid_addr(symbol_table[tokenz[i+2]]):
                             receiver=symbol_table[tokenz[i+2]]
                             if compile:
@@ -548,9 +544,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             if compile:
                                 add_compile(f"receiver={tokenz[i+2]}")
                         else:
-                            if debug:
-                                print("Invalid receiver",tokenz[i+2])
-                            error(f"Invalid Receiver on line {line_i}")
+                            error(f"Invalid Receiver on line {line_i}",line_i)
                         
                         if tokenz[i+3] in symbol_table['vars']:
                             curr=symbol_table[tokenz[i+3]]
@@ -561,9 +555,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                                 add_compile(f"currency={(tokenz[i+3])}")
                             curr=refactor_temp(tokenz[i+3])
                         if amount=="" or receiver=="":
-                            if debug:
-                                print("Syntax Error while defining transaction")
-                            error(f"Syntax Error while defining transaction on line {line_i}")
+                            error(f"Syntax Error while defining transaction on line {line_i}",line_i)
                         trans={"to":receiver,"amount":amount,"currency":curr}
                         if compile:
                             add_compile("tx={'to':receiver,'amount':amount,'currency':currency}")
@@ -611,7 +603,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                     continue
                 if x=="exec" and args==1 or (args==2 and is_valid_var_name(tokenz[i+2])):
                     if infunc:
-                        error(f"Cannot execute functions inside of running function instances on line {line_i}")
+                        error(f"Cannot execute functions inside of running function instances on line {line_i}",line_i)
                     if tokenz[i+1] in list(funcs.keys()) and args==1:
                         ignore.append(i+1)
                         if compile:
@@ -699,9 +691,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                     ignore.append(i+1)
                     continue
                 else:
-                    if debug:
-                        print(f"Syntax Error : {x} is an invalid token")
-                    error(f"Syntax Error : {x} is an invalid token on line {line_i}")
+                    error(f"Syntax Error : {x} is an invalid token on line {line_i}",line_i)
     internal(tokenz)
     del symbol_table['vars']
     if gas:
@@ -711,6 +701,8 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
     return symbol_table,trans
 
 def run(script,symbol_table={},debug=True,gas=False,compile=False,working_dir=""):
+    global formatted_code
+    formatted_code=reformatter(script)
     if '"' in script or '{' in script or '}' in script:
         raise Exception('Double quote character " is not allowed')
     parse_tokens=tokeniser(script)
