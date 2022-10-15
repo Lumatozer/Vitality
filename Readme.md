@@ -128,6 +128,11 @@ To add a loop:
 recursions: {number_of_loops};
 loop ({code_here});
 ```
+To import a compiled vitality file:
+```python
+#note : make sure you keep the compiled file in a subfolder and mention it in the run function | example: vengine.run(script,working_dir="{dir_name}/")
+require {script_name};
+```
 You can return data from inside of functions also using the "omit" token
 ```python
 function main (
