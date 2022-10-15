@@ -55,11 +55,15 @@ var a = ();
 ```
 To append something to an array
 ```python
-append {list_name} {data_to_append};
+.{list_name} + {data_to_append};
 ```
 To remove something from an array
 ```python
-remove {list_name} {data_to_remove};
+.{list_name} - {data_to_remove};
+```
+To store data at index from an array
+```python
+.{list_name} $ {index} ${variable_for_storing};
 ```
 If statements
 ```python
@@ -121,7 +125,7 @@ function main (
 ```
 To execute Functions;
 ```python
-exec {func_name};
+.{func_name};
 ```
 To add a loop:
 ```
@@ -141,7 +145,7 @@ function main (
 ```
 The syntax for executing such function which return a value is
 ```python
-exec {func_name} {var_name};
+.{func_name} {var_name};
 ```
 This stores the value omitted by the function in the variable provided.
 ## Smart Contract Examples
