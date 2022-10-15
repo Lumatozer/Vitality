@@ -7,11 +7,11 @@ import vengine
 script="print 'Hello world.';"
 vengine.run(script)
 ```
-## Reformatter
+## Formatter
 ```
 import vengine
 script="print 'Hello world.';"
-print(vengine.reformatter(script))
+print(vengine.formatter(script))
 ```
 ## Basics
 To create a variable and assign a value to it

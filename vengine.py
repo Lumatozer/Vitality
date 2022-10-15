@@ -1,4 +1,4 @@
-import os,json,sys
+import os,json,sys,builtins
 
 def get_cwd():
     return os.getcwd().replace("\\","/")
@@ -9,7 +9,10 @@ def is_safe_path(path,folder=""):
 
 def error(disc="<3",line=1):
     line_on_error=formatted_code.split('\n')[line-1]
-    sys.exit(f"Line {line} : {line_on_error} \n"+f"Error {disc}")
+    if line!=0:
+        sys.exit(f"Line {line} : {line_on_error} \n"+f"Error {disc}")
+    else:
+        sys.exit(f"Error {disc}")
 
 def ltz_round(num):
     return round(float(num),8)
@@ -28,6 +31,8 @@ def is_valid_var_name(varname):
     allowed="abcdefghijklmnopqrstuvwxyz"
     allowed+=allowed.upper()
     allowed+="_"
+    if varname[0]=="_":
+        return False
     for x in allowed:
         varname=varname.replace(x,"")
     if varname=="":
@@ -227,7 +232,7 @@ def expr_pre_processor(expr,partial=False,use_st=True):
         raise Exception("Dangerous Input detected")
     new_expr_tokens=[]
     for x in expr_tokens:
-        if x in symbol_table["vars"]:
+        if x in symbol_table["vars"] and symbol_table[x]!=None:
             if type(symbol_table[x])==type("") and not partial:
                 new_expr_tokens.append("'"+symbol_table[x]+"'")
             elif partial:
@@ -241,8 +246,8 @@ def expr_pre_processor(expr,partial=False,use_st=True):
         new_expr_tokens.append(x)
     for x in new_expr_tokens:
         if type(x)==type(0.1):
-            if x>18446744073709551616:
-                error("Integer larger than 2**64",0)
+            if x>18446744073709551616 or len(str(x).split(".")[1])>=8:
+                error("Numbers are too large",0)
     new_expr=""
     for x in new_expr_tokens:
         new_expr+=str(x)
@@ -312,7 +317,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
     symbol_table=st
     symbol_table["vars"]=list(symbol_table.keys())
     identifiers=["var","list","print","if","tx",";","int","str","float"]
-    blacklist=["vars","tx","recursions","loopi"]
+    blacklist=["vars","tx","recursions","loopi","import","os","json"]+dir(builtins)
     line_i=0
     def internal(tokenz,infunc=False,inloop=False):
         i=-1
@@ -378,7 +383,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                     ignore.append(i+1)
                     continue
                 if x == "var":
-                    if (args==3) and tokenz[i+1] in symbol_table["vars"] and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]):
+                    if (args==3) and tokenz[i+1] not in blacklist and tokenz[i+1] in symbol_table["vars"] and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]):
                         if tokenz[i+3] in symbol_table['vars']:
                             if gas:
                                 fees+=len(str(tokenz[i+1]))
@@ -395,9 +400,11 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             if type(value)==type((1,2)):
                                 value=list(value)
                             if compile:
+                                
                                 if type(value)==type((1,2)):
                                     add_compile(f"{tokenz[i+1]}=[{tokenz[i+3][1:-1]}]")
                                 else:
+                                    
                                     add_compile(f"{tokenz[i+1]}={tokenz[i+3][1:-1]}")
                             symbol_table[tokenz[i+1]]=value
                         elif tokenz[i+3]=="true" or tokenz[i+3]=='false':
@@ -569,7 +576,9 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                         fees+=len(str(tokenz[i+1]))
                         fees+=len(str(tokenz[i+2]))
                         fees+=len(str(tokeniser(tokenz[i+2][1:-1])))
+                        last_st=symbol_table
                         internal(str(tokeniser(tokenz[i+2][1:-1])))
+                        symbol_table=last_st
                     if compile:
                         add_compile(f"if {expr_pre_processor(tokenz[i+1],partial=True,use_st=False)}:")
                         indents+=1
@@ -680,7 +689,9 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                         indents-=1
                     if gas:
                         initial_gas=fees
+                        last_st=symbol_table
                         internal(tokeniser(tokenz[i+1][1:-1]),inloop=True)
+                        symbol_table=last_st
                         new_gas=fees
                         differ_gas=new_gas-initial_gas
                         new_gas=initial_gas
@@ -690,10 +701,12 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             internal(tokeniser(tokenz[i+1][1:-1]),inloop=True)
                     ignore.append(i+1)
                     continue
+                    continue
                 else:
                     error(f"Syntax Error : {x} is an invalid token on line {line_i}",line_i)
     internal(tokenz)
     del symbol_table['vars']
+    funcs,omit,vars_initialized,recursions,line_i=(None,)*5
     if gas:
         return fees
     if compile:
@@ -702,13 +715,13 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
 
 def run(script,symbol_table={},debug=True,gas=False,compile=False,working_dir=""):
     global formatted_code
-    formatted_code=reformatter(script)
-    if '"' in script or '{' in script or '}' in script:
-        raise Exception('Double quote character " is not allowed')
+    formatted_code=formatter(script)
+    if '"' in script:
+        error('Double quote character " is not allowed',0)
     parse_tokens=tokeniser(script)
     return parser(parse_tokens,symbol_table,debug,gas,compile,working_dir)
 
-def reformatter(script):
+def formatter(script):
     new_script=""
     indents=0
     for x in script.replace("\n",""):
