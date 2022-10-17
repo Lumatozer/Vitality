@@ -283,6 +283,7 @@ def expr_post_processor(prep_expr):
     val=eval(prep_expr,{},{})
     if type(val)==type((1,2)):
         val=list(val)
+        new_val=val
         i=-1
         for x in val:
             i+=1
@@ -692,7 +693,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                                 ignore.append(i+1)
                                 ignore.append(i+2)
                                 continue
-                        if args==3:
+                        if tokenz[i+1]=="$" and args==3:
                             val=None
                             if tokenz[i+3].replace("$","") not in symbol_table["vars"]:
                                 error(f"Undeclared Variable Detected on line {line_i}",line_i)
@@ -707,6 +708,41 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             symbol_table[tokenz[i+3].replace("$","")]=symbol_table[object_val][val]
                             if compile:
                                 add_compile(f'{tokenz[i+3].replace("$","")}={object_val}[{tokenz[i+2]}]')
+                            if gas:
+                                fees+=len(str(symbol_table[tokenz[i+1]][val]))
+                            ignore.append(i+1)
+                            ignore.append(i+2)
+                            ignore.append(i+3)
+                            continue
+                        if tokenz[i+1]==":" and args==2 and tokenz[i+2].replace("$","") in symbol_table["vars"]:
+                            symbol_table[tokenz[i+2].replace("$","")]=len(symbol_table[object_val])
+                            if compile:
+                                add_compile(f'{tokenz[i+2].replace("$","")}=len({object_val})')
+                            if gas:
+                                fees+=len(str(len(symbol_table[object_val])))
+                            ignore.append(i+1)
+                            ignore.append(i+2)
+                            ignore.append(i+3)
+                            continue
+                        if tokenz[i+1]=="::" and args==3:
+                            val=None
+                            if tokenz[i+3].replace("$","") not in symbol_table["vars"]:
+                                error(f"Undeclared Variable Detected on line {line_i}",line_i)
+                            if tokenz[i+2] in symbol_table["vars"]:
+                                val=symbol_table[tokenz[i+2]]
+                            else:
+                                val=tokenz[i+2]
+                            try:
+                                val=ltz_round(val)
+                            except:
+                                pass
+                            try:
+                                symbol_table[object_val].index(val)
+                            except:
+                                error(f"Invalid index for list on line {line_i}",line_i)
+                            symbol_table[tokenz[i+3].replace("$","")]=symbol_table[object_val].index(val)
+                            if compile:
+                                add_compile(f'{tokenz[i+3].replace("$","")}={object_val}.index({tokenz[i+2]})')
                             if gas:
                                 fees+=len(str(symbol_table[tokenz[i+1]][val]))
                             ignore.append(i+1)
