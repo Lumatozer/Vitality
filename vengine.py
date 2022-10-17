@@ -749,6 +749,17 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             ignore.append(i+2)
                             ignore.append(i+3)
                             continue
+                if x=="//":
+                    comments=""
+                    for argx in range(1,args+1):
+                        comments+=tokenz[argx]+" "
+                    if gas:
+                        fees+=len(comments)
+                    if compile:
+                        add_compile(f"#{comments}")
+                    for argx in range(1,args+1):
+                        ignore.append(argx)
+                    continue
                 else:
                     error(f"Syntax Error : {x} is an invalid token on line {line_i}",line_i)
     internal(tokenz)
