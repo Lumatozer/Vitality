@@ -363,7 +363,10 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                             symbol_table[y]=None
                             symbol_table["vars"].append(y)
                         if compile:
+                            add_compile(f"if '{y}' not in list(locals().keys()):")
+                            indents+=1
                             add_compile(f"{y}=None")
+                            indents-=1
                         if gas:
                             fees+=len(y)
                     for y in range(1,args+1):
