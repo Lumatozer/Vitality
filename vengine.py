@@ -250,7 +250,7 @@ def expr_pre_processor(expr,partial=False,use_st=True):
         new_expr_tokens.append(x)
     for x in new_expr_tokens:
         if type(x)==type(0.1):
-            if x>18446744073709551616 or len(str(x).split(".")[1])>=8:
+            if x>18446744073709551616:
                 error("Numbers are too large",0)
     new_expr=""
     for x in new_expr_tokens:
@@ -280,7 +280,10 @@ def expr_pre_processor(expr,partial=False,use_st=True):
     return new_expr
 
 def expr_post_processor(prep_expr):
-    val=eval(prep_expr,{},{})
+    try:
+        val=eval(prep_expr,{},{})
+    except ZeroDivisionError:
+        return 1
     if type(val)==type((1,2)):
         val=list(val)
         new_val=val
@@ -521,7 +524,8 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                         fees+=len(str(tokenz[i+2]))
                         fees+=len(str(tokeniser(tokenz[i+2][1:-1])))
                         last_st=symbol_table
-                        internal(str(tokeniser(tokenz[i+2][1:-1])))
+                        print(symbol_table)
+                        internal(tokeniser(tokenz[i+2][1:-1]))
                         symbol_table=last_st
                     if compile:
                         add_compile(f"if {expr_pre_processor(tokenz[i+1],partial=True,use_st=False)}:")
