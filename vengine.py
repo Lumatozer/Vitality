@@ -280,13 +280,9 @@ def expr_pre_processor(expr,partial=False,use_st=True):
     return new_expr
 
 def expr_post_processor(prep_expr):
-    try:
-        val=eval(prep_expr,{},{})
-    except ZeroDivisionError:
-        return 1
+    val=eval(prep_expr,{},{})
     if type(val)==type((1,2)):
         val=list(val)
-        new_val=val
         i=-1
         for x in val:
             i+=1
@@ -363,6 +359,8 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                         if y not in symbol_table["vars"]:
                             symbol_table[y]=None
                             symbol_table["vars"].append(y)
+                        if compile:
+                            add_compile(f"{y}=None")
                         if gas:
                             fees+=len(y)
                     for y in range(1,args+1):
