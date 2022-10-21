@@ -236,7 +236,7 @@ def expr_pre_processor(expr,partial=False,use_st=True):
         raise Exception("Dangerous Input detected")
     new_expr_tokens=[]
     for x in expr_tokens:
-        if x in symbol_table["vars"] and symbol_table[x]!=None:
+        if x in symbol_table["vars"]:
             if type(symbol_table[x])==type("") and not partial:
                 new_expr_tokens.append("'"+symbol_table[x]+"'")
             elif partial:
