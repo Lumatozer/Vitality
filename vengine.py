@@ -325,7 +325,7 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
     symbol_table=st
     symbol_table["vars"]=list(symbol_table.keys())
     identifiers=["var","list","print","if","tx",";","int","str","float"]
-    blacklist=["vars","tx","recursions","loopi","import","os","json"]+dir(builtins)
+    blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx"]+dir(builtins)
     line_i=0
     def internal(tokenz,infunc=False,inloop=False):
         i=-1
