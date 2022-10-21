@@ -280,7 +280,10 @@ def expr_pre_processor(expr,partial=False,use_st=True):
     return new_expr
 
 def expr_post_processor(prep_expr):
-    val=eval(prep_expr,{},{})
+    try:
+        val=eval(prep_expr,{},{})
+    except ZeroDivisionError:
+        val=1
     if type(val)==type((1,2)):
         val=list(val)
         i=-1
@@ -522,7 +525,6 @@ def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
                         fees+=len(str(tokenz[i+2]))
                         fees+=len(str(tokeniser(tokenz[i+2][1:-1])))
                         last_st=symbol_table
-                        print(symbol_table)
                         internal(tokeniser(tokenz[i+2][1:-1]))
                         symbol_table=last_st
                     if compile:
@@ -802,7 +804,4 @@ if __name__=="__main__":
     env={}
     while True:
         line=input(">> ")
-        try:
-            env=run(line,env)[0]
-        except Exception as e:
-            print(e)
+        env=run(line,env)[0]
