@@ -741,6 +741,12 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             except:
                                 pass
                             try:
+                                try:
+                                    if val[0]=="'" and val[-1]=="'":
+                                        val=val[1:-1]
+                                except:
+                                    pass
+                                print(val in symbol_table[object_val])
                                 symbol_table[object_val].index(val)
                             except:
                                 error(f"Invalid index for list on line {line_i}",line_i)
