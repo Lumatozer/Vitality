@@ -775,7 +775,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
         return compiled
     return symbol_table,trans
 
-def run(script,symbol_table={},debug=True,gas=False,compile=False,working_dir=""):
+def run(script,symbol_table={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir=""):
     global formatted_code
     formatted_code=formatter(script)
     if '"' in script:
