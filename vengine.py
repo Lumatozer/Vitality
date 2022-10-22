@@ -280,10 +280,7 @@ def expr_pre_processor(expr,partial=False,use_st=True):
     return new_expr
 
 def expr_post_processor(prep_expr):
-    try:
-        val=eval(prep_expr,{},{})
-    except ZeroDivisionError:
-        val=1
+    val=eval(prep_expr,{},{})
     if type(val)==type((1,2)):
         val=list(val)
         i=-1
@@ -300,7 +297,7 @@ def expr_post_processor(prep_expr):
     except:
         return val
 
-def parser(tokenz,st={},debug=True,gas=False,compile=False,working_dir=""):
+def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir=""):
     global symbol_table,funcs,trans,omit,vars_initialized,recursions,line_i
     recursions=[50,0]
     vars_initialized=False
