@@ -718,7 +718,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             ignore.append(i+2)
                             ignore.append(i+3)
                             continue
-                        if tokenz[i+1]==":" and args==2 and tokenz[i+2].replace("$","") in symbol_table["vars"]:
+                        if tokenz[i+1]=="len" and args==2 and tokenz[i+2].replace("$","") in symbol_table["vars"]:
                             symbol_table[tokenz[i+2].replace("$","")]=len(symbol_table[object_val])
                             if compile:
                                 add_compile(f'{tokenz[i+2].replace("$","")}=len({object_val})')
@@ -728,7 +728,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             ignore.append(i+2)
                             ignore.append(i+3)
                             continue
-                        if tokenz[i+1]=="::" and args==3:
+                        if tokenz[i+1]=="obj" and args==3:
                             val=None
                             if tokenz[i+3].replace("$","") not in symbol_table["vars"]:
                                 error(f"Undeclared Variable Detected on line {line_i}",line_i)

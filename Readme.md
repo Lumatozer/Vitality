@@ -67,11 +67,11 @@ To store data at index from an array
 ```
 To store index of data from an array:
 ```python
-.{list_name} :: {data} ${variable_for_storing};
+.{list_name} obj {data} ${variable_for_storing};
 ```
 To store length of an array:
 ```python
-.{list_name} : ${variable_for_storing};
+.{list_name} len ${variable_for_storing};
 ```
 If statements
 ```python
