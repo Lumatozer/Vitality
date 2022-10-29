@@ -737,6 +737,34 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             ignore.append(i+2)
                             ignore.append(i+3)
                             continue
+                        if tokenz[i+1]=="insert" and args==3:
+                            if tokenz[i+2] in symbol_table["vars"] and is_num(symbol_table[tokenz[i+2]],True) and int(symbol_table[tokenz[i+2]])<=len(symbol_table[object_val]):
+                                val = tokenz[i+3]
+                                if val[0]=="(" and val[1]==")":
+                                    symbol_table[symbol_table[tokenz[i+2]]]=expr_post_processor(expr_pre_processor(tokenz[i+3][1:-1]))
+                                else:
+                                    symbol_table[symbol_table[tokenz[i+2]]]=tokenz[i+3]
+                                if gas:
+                                    fees+=len(tokenz[i+3])
+                                if compile:
+                                    add_compile(f"{object_val}.insert({tokenz[i+2]},{tokenz[i+3]})")
+                            elif is_num(tokenz[i+2],integer=True) and int(tokenz[i+2])<=len(symbol_table[object_val]):
+                                val = tokenz[i+3]
+                                if val[0]=="(" and val[1]==")":
+                                    symbol_table[int(tokenz[i+2])]=expr_post_processor(expr_pre_processor(tokenz[i+3][1:-1]))
+                                else:
+                                    symbol_table[int(tokenz[i+2])]=tokenz[i+3]
+                                if gas:
+                                    fees+=len(tokenz[i+3])
+                                if compile:
+                                    add_compile(f"{object_val}.insert({tokenz[i+2]},{tokenz[i+3]})")
+                            else:
+                                error("Error while inserting item in list",line_i)
+                            ignore.append(i+1)
+                            ignore.append(i+2)
+                            ignore.append(i+3)
+                            continue
+
                         if tokenz[i+1]=="obj" and args==3:
                             val=None
                             if tokenz[i+3].replace("$","") not in symbol_table["vars"]:
@@ -755,7 +783,6 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                         val=val[1:-1]
                                 except:
                                     pass
-                                print(val in symbol_table[object_val])
                                 symbol_table[object_val].index(val)
                             except:
                                 error(f"Invalid index for list on line {line_i}",line_i)
