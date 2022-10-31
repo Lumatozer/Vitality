@@ -280,7 +280,13 @@ def expr_pre_processor(expr,partial=False,use_st=True):
     return new_expr
 
 def expr_post_processor(prep_expr):
-    val=eval(prep_expr,{},{})
+    try:
+        val=eval(prep_expr,{},{})
+    except Exception as e:
+        if "unsupported operand" in str(e) and 'compiled' in globals().keys():
+            return 1
+        else:
+            error(str(e),line_i)
     if type(val)==type((1,2)):
         val=list(val)
         i=-1
@@ -303,7 +309,7 @@ def x_notin_y(x1: str,x2: list):
             return False
     return True
 
-def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir=""):
+def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir="",runtime_func="main"):
     global symbol_table,funcs,trans,omit,vars_initialized,recursions,line_i
     recursions=[50,0]
     vars_initialized=False
@@ -327,10 +333,10 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
     symbol_table=st
     symbol_table["vars"]=list(symbol_table.keys())
     identifiers=["var","list","print","if","tx",";","int","str","float"]
-    blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx"]+dir(builtins)
+    blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx","boot"]+dir(builtins)
     blacklist_v2=["in","or","and","not"]
     line_i=0
-    def internal(tokenz,infunc=False,inloop=False):
+    def internal(tokenz,func_trace=1,inloop=False,main_func=False):
         i=-1
         ignore=[]
         global symbol_table,funcs,trans,omit,vars_initialized,recursions,line_i
@@ -356,6 +362,10 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         error(f"Missing ';' for line break on line {line_i}",line_i)
                     args+=1
                 line_i+=1
+                if x=="vars:" or x=="recursions:" or x=="function":
+                    pass
+                elif func_trace==0:
+                    error("Found tokens outside function body",line_i)
                 if x=='vars:' and args>0 and not vars_initialized:
                     vars_initialized=True
                     init_vars=[]
@@ -364,15 +374,20 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             init_vars.append(tokenz[i+y])
                         else:
                             error("Invalid variable initialization")
+                    if compile:
+                        add_compile("if 'boot' not in list(locals().keys()):")
+                        indents+=1
+                        init_compile_str=""
+                        for y in init_vars:
+                            init_compile_str+=f"{y},"
+                        init_compile_str+=f"=[1]*{len(init_vars)}"
+                        add_compile(init_compile_str)
+                        indents-=1
+                        add_compile("boot=None")
                     for y in init_vars:
-                        if y not in symbol_table["vars"]:
+                        if y not in symbol_table["vars"] and is_valid_var_name(y):
                             symbol_table[y]=None
                             symbol_table["vars"].append(y)
-                        if compile:
-                            add_compile(f"if '{y}' not in list(locals().keys()):")
-                            indents+=1
-                            add_compile(f"{y}=None")
-                            indents-=1
                         if gas:
                             fees+=len(y)
                     for y in range(1,args+1):
@@ -382,11 +397,9 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     recursions=[int(tokenz[i+1]),1]
                     if compile:
                         add_compile(f"recursions={tokenz[i+1]}")
-                    if gas:
-                        fees+=len(f"recursions={tokenz[i+1]}")
                     ignore.append(i+1)
                     continue
-                if x=="require" and args==1 and is_safe_path(tokenz[i+1],working_dir) and os.path.exists(working_dir+tokenz[i+1]+".dat") and os.path.exists(working_dir+tokenz[i+1]):
+                if x=="#include" and args==1 and is_safe_path(tokenz[i+1],working_dir) and os.path.exists(working_dir+tokenz[i+1]+".dat") and os.path.exists(working_dir+tokenz[i+1]):
                     imported_vars=json.loads(open(working_dir+tokenz[i+1]).read())["symbol_table"]
                     for x in imported_vars.keys():
                         symbol_table[x]=imported_vars[x]
@@ -404,46 +417,39 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     if (args==3) and tokenz[i+1] not in blacklist and x_notin_y(tokenz[i+1],blacklist_v2) and tokenz[i+1] in symbol_table["vars"] and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]):
                         if tokenz[i+3] in symbol_table['vars']:
                             if gas:
-                                fees+=len(str(tokenz[i+1]))
-                                fees+=len(str(tokenz[i+3]))
                                 fees+=len(str(symbol_table[tokenz[i+3]]))
                             if compile:
-                                add_compile(f"{tokenz[i+1]}={tokenz[i+3]}")
+                                add_compile(f"globals()['{tokenz[i+1]}']={tokenz[i+3]}")
                             symbol_table[tokenz[i+1]]=refactor_temp(symbol_table[tokenz[i+3]])
                         elif tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")":
                             value=expr_post_processor(expr_pre_processor(tokenz[i+3]))
                             if gas:
                                 fees+=len(str(expr_pre_processor(tokenz[i+3])))
-                                fees+=len(str(tokenz[i+1]))
                             if type(value)==type((1,2)):
                                 value=list(value)
                             if compile:
                                 if type(value)==type([]):
-                                    add_compile(f"{tokenz[i+1]}=[{tokenz[i+3][1:-1]}]")
+                                    add_compile(f"globals()['{tokenz[i+1]}']=[{tokenz[i+3][1:-1]}]")
                                 else:
-                                    add_compile(f"{tokenz[i+1]}={tokenz[i+3][1:-1]}")
+                                    add_compile(f"globals()['{tokenz[i+1]}']={tokenz[i+3][1:-1]}")
                             symbol_table[tokenz[i+1]]=value
                         elif tokenz[i+3]=="true" or tokenz[i+3]=='false':
                             if gas:
-                                fees+=len(str(tokenz[i+3]))
-                                fees+=5
+                                fees+=10
                             if tokenz[i+3]=="true":
                                 if compile:
-                                    add_compile(f"{tokenz[i+1]}=True")
+                                    add_compile(f"globals()['{tokenz[i+1]}']=True")
                                 symbol_table[tokenz[i+1]]=True 
                             else:
                                 if compile:
-                                    add_compile(f"{tokenz[i+1]}=False")
+                                    add_compile(f"globals()['{tokenz[i+1]}']=False")
                                 symbol_table[tokenz[i+1]]=False
                         else:
-                            if gas:
-                                fees+=len(str(tokenz[i+1]))
-                                fees+=len(str(tokenz[i+3]))
                             if compile:
                                 if is_num(tokenz[i+3]):
-                                    add_compile(f"{tokenz[i+1]}={(tokenz[i+3])}")
+                                    add_compile(f"globals()['{tokenz[i+1]}']={(tokenz[i+3])}")
                                 else:
-                                    add_compile(f"{tokenz[i+1]}={add_sq(refactor_temp(tokenz[i+3]))}")
+                                    add_compile(f"globals()['{tokenz[i+1]}']={add_sq(refactor_temp(tokenz[i+3]))}")
                             symbol_table[tokenz[i+1]]=refactor_temp(tokenz[i+3])
                         ignore.append(i+1)
                         ignore.append(i+2)
@@ -451,8 +457,6 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         if args==4:
                             ignore.append(i+4)
                         symbol_table["vars"].append(tokenz[i+1])
-                        if gas:
-                            fees+=len(str(tokenz[i+1]))
                         continue
                     else:
                         error(f"Syntax Error detected while defining variable on line {line_i}",line_i)
@@ -461,17 +465,11 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     if debug:
                         if tokenz[i+1] not in identifiers:
                             if tokenz[i+1] in symbol_table.keys():
-                                if gas:
-                                    fees+=len(str(tokenz[i+1]))
                                 print(symbol_table[tokenz[i+1]])
                                 continue
                             if tokenz[i+1][0]=="(" and tokenz[i+1][-1]==")":
-                                if gas:
-                                    fees+=len(str(expr_pre_processor(tokenz[i+1])))
                                 print(expr_post_processor(expr_pre_processor(tokenz[i+1])))
                                 continue
-                            if gas:
-                                fees+=len(str(tokenz[i+1]))
                             print(refactor_temp(tokenz[i+1]))
                             continue
                         else:
@@ -530,8 +528,6 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                 if x=="if" and args==2:
                     if gas:
                         fees+=len(str(expr_pre_processor(tokenz[i+1])))
-                        fees+=len(str(tokenz[i+1]))
-                        fees+=len(str(tokenz[i+2]))
                         fees+=len(str(tokeniser(tokenz[i+2][1:-1])))
                         last_st=symbol_table
                         internal(tokeniser(tokenz[i+2][1:-1]))
@@ -542,28 +538,29 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])) and not compile:
                         internal(tokeniser(tokenz[i+2][1:-1]))
                     elif compile:
-                        add_compile("pass")
+                        pre_compile=compiled
                         internal(tokeniser(tokenz[i+2][1:-1]))
+                        if compiled==pre_compile:
+                            add_compile("pass")
                         indents-=1
                     ignore.append(i+1)
                     ignore.append(i+2)
                     continue
                 if x=="function" and args==2:
-                    if (refactor_temp(tokenz[i+1]) not in symbol_table['vars'] or symbol_table['vars']==None) and refactor_temp(tokenz[i+1]) not in list(funcs.keys()):
+                    if tokenz[i+2].replace(" ","")=="()":
+                        error("Empty Function Detected",line_i)
+                    if (refactor_temp(tokenz[i+1]) not in symbol_table['vars'] or symbol_table['vars']=="") and refactor_temp(tokenz[i+1]) not in list(funcs.keys()):
                         ignore.append(i+1)
                         ignore.append(i+2)
                         if gas:
-                            fees+=len(str(tokenz[i+1]))
                             fees+=len(str(tokeniser(tokenz[i+2][1:-1]+";")))
                         if compile:
                             add_compile(f"def {tokenz[i+1]}():")
                             indents+=1
-                            add_compile("pass")
+                            last_compiled_state=compiled
                             internal(tokeniser(tokenz[i+2][1:-1]+";"))
-                            add_compile("for x in locals().copy():")
-                            indents+=1
-                            add_compile("globals()[x]=locals()[x]")
-                            indents-=1
+                            if last_compiled_state==compiled:
+                                add_compile("pass")
                             indents-=1
                         funcs[tokenz[i+1]]=tokeniser(tokenz[i+2][1:-1]+";")
                     continue
@@ -595,7 +592,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         if compile:
                             add_compile(f"return {tokenz[i+1]}")
                         if gas:
-                            fees+=len(str(expr_pre_processor(tokenz[i+1])))
+                            fees+=20
                     elif tokenz[i+1] in symbol_table["vars"]:
                         omit=symbol_table[tokenz[i+1]]
                         if compile:
@@ -616,8 +613,10 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     if compile:
                         add_compile("for loopi in range(1,recursions+1):")
                         indents+=1
-                        add_compile("pass")
+                        pre_compile=compiled
                         internal(tokeniser(tokenz[i+1][1:-1]),inloop=True)
+                        if pre_compile==compiled:
+                            add_compile("pass")
                         indents-=1
                     if gas:
                         initial_gas=fees
@@ -630,37 +629,30 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         fees+=differ_gas*recursions[0]
                     if not compile:
                         for loopi in range(1,recursions[0]+1):
-                            internal(tokeniser(tokenz[i+1][1:-1]),inloop=True)
+                            internal(tokeniser(tokenz[i+1][1:-1]),inloop=True,func_trace=func_trace+1)
                     ignore.append(i+1)
                     continue
                 if x[0]=="." and (x.split(".")[1] in symbol_table["vars"] or x.split(".")[1] in list(funcs.keys())):
                     object_val=x.split(".")[1]
                     if object_val in list(funcs.keys()):
+                        if func_trace>2:
+                                error(f"Cannot execute functions inside of multiple running function instances on line {line_i}",line_i)
                         if args==0:
-                            if infunc:
-                                error(f"Cannot execute functions inside of running function instances on line {line_i}",line_i)
-                            if object_val in list(funcs.keys()) and args==0:
+                            if object_val in list(funcs.keys()):
                                 if compile:
                                     add_compile(f"{object_val}()")
                                 else:
-                                    internal(funcs[object_val],infunc=True)
-                                continue
-                            if object_val in list(funcs.keys()) and args==1:
-                                ignore.append(i+1)
-                                if compile:
-                                    add_compile(f"{object_val}()")
-                                else:
-                                    internal(funcs[object_val],infunc=True)
-                                omit=None
+                                    internal(funcs[object_val],func_trace=func_trace+1)
                                 continue
                         if args==1:
+                            if tokenz[i+1] not in symbol_table["vars"]:
+                                error("Variable Undefined",line_i)
                             ignore.append(i+1)
                             if compile:
-                                add_compile(f'{tokenz[i+1].replace("$","")}={object_val}()')
+                                add_compile(f'globals()["{tokenz[i+1].replace("$","")}"]={object_val}()')
                             else:
-                                internal(funcs[object_val],infunc=True)
+                                internal(funcs[object_val],func_trace=func_trace+1)
                             if gas:
-                                fees+=len(str(tokenz[i+1].replace("$","")))
                                 fees+=len(str(omit))
                             symbol_table[tokenz[i+1].replace("$","")]=omit
                             symbol_table["vars"].append(tokenz[i+1].replace("$",""))
@@ -683,7 +675,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                         store="["+store[1:-1]+"]"
                                     add_compile(f"{object_val}.append({store})")
                                 if gas:
-                                    fees+=len(str(f"{object_val}={symbol_table[tokenz[i+2]]}"))
+                                    fees+=len(str(tokenz[i+2]))
                                 ignore.append(i+1)
                                 ignore.append(i+2)
                                 continue
@@ -702,7 +694,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                         store="["+store[1:-1]+"]"
                                     add_compile(f"{object_val}.remove({store})")
                                 if gas:
-                                    fees+=len(str(f"{object_val}={symbol_table[tokenz[i+2]]}"))
+                                    fees+=len(str(tokenz[i+2]))
                                 ignore.append(i+1)
                                 ignore.append(i+2)
                                 continue
@@ -722,7 +714,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             if compile:
                                 add_compile(f'{tokenz[i+3].replace("$","")}={object_val}[{tokenz[i+2]}]')
                             if gas:
-                                fees+=len(str(symbol_table[tokenz[i+1]][val]))
+                                fees+=len(str(tokenz[i+1]))
                             ignore.append(i+1)
                             ignore.append(i+2)
                             ignore.append(i+3)
@@ -798,32 +790,37 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                 if x=="//":
                     comments=""
                     for argx in range(1,args+1):
-                        comments+=tokenz[argx]+" "
+                        comments+=tokenz[i+argx]+" "
                     if gas:
                         fees+=len(comments)
                     if compile:
-                        add_compile(f"#{comments}")
+                        add_compile(f"# {comments}")
                     for argx in range(1,args+1):
-                        ignore.append(argx)
+                        ignore.append(i+argx)
                     continue
                 else:
                     error(f"Syntax Error : {x} is an invalid token on line {line_i}",line_i)
     internal(tokenz)
+    internal(["."+runtime_func,";"])
     del symbol_table['vars']
-    funcs,omit,vars_initialized,recursions,line_i=(None,)*5
+    omit,vars_initialized,recursions,line_i=(None,)*4
+    if not compile:
+        funcs=None
     if gas:
         return fees
     if compile:
-        return compiled
+        if compiled[-1]=="\n":
+            compiled=compiled[:-1]
+        return compiled,list(funcs.keys())
     return symbol_table,trans
 
-def run(script,symbol_table={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir=""):
+def run(script,symbol_table={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir="",runtime_func="main"):
     global formatted_code
     formatted_code=formatter(script)
     if '"' in script:
         error('Double quote character " is not allowed',0)
     parse_tokens=tokeniser(script)
-    return parser(parse_tokens,symbol_table,debug,gas,compile,working_dir)
+    return parser(parse_tokens,symbol_table,debug,gas,compile,working_dir,runtime_func)
 
 def formatter(script):
     new_script=""
