@@ -1,6 +1,27 @@
+#Importing some libs
 import os,json,sys,builtins
 import traceback
 
+#Null class object
+class null:
+    def __init__(self) -> None:
+        pass
+    def __add__(self,x):
+        return 1
+    def __sub__(self,x):
+        return 1
+    def __truediv__(self,x):
+        return 1
+    def __rtruediv__(self,x):
+        return 1
+    def __mod__(self,x):
+        return 1
+    def __eq__(self, __o: object) -> bool:
+        if str(__o)=="null":
+            return True
+        return False
+
+#These functions are responsible for preventing path traversal
 def get_cwd():
     return os.getcwd().replace("\\","/")
 def get_abs(path):
@@ -8,6 +29,7 @@ def get_abs(path):
 def is_safe_path(path,folder=""):
     return str(get_cwd()+f"/"+folder) in str(get_abs(get_cwd()+f"/"+folder+path))
 
+#To gracefully exit with an error
 def error(disc="<3",line=1):
     line_on_error=formatted_code.split('\n')[line-1]
     if line!=0:
@@ -15,12 +37,15 @@ def error(disc="<3",line=1):
     else:
         sys.exit(f"Error {disc}")
 
+#To round a number to its 8th decimal
 def ltz_round(num):
     return round(float(num),8)
 
+#To add single quotes to a string for ex : alu --> 'alu'
 def add_sq(string):
     return "'"+string+"'"
 
+#To check if an object is an integer or a float
 def is_num(chk,integer=False):
     try:
         if not integer:
@@ -32,6 +57,7 @@ def is_num(chk,integer=False):
     except:
         return False
 
+#Check if the variable names are valid or not
 def is_valid_var_name(varname):
     allowed="abcdefghijklmnopqrstuvwxyz"
     allowed+=allowed.upper()
@@ -45,6 +71,7 @@ def is_valid_var_name(varname):
     else:
         return False
 
+#Check if the outgoing address for a transaction is valid or not
 def is_valid_addr(addr):
     allowed="abcdefghijklmnopqrstuvwxyz"
     allowed+=allowed.upper()
@@ -55,6 +82,7 @@ def is_valid_addr(addr):
     if addr=="":
         return True
 
+#To break an arithmetic expression into several tokens
 def break_expr(expr):
     tokens=[]
     operators=["*","/","%","+","-","=","<",">"]
@@ -128,6 +156,7 @@ def break_expr(expr):
         tokens.append(cache)
     return tokens
 
+#This function return the string without its quotes if it is not a number otherwise as an integer
 def refactor_temp(data):
     data=str(data)
     if data[0] == "'" and data[-1]=="'":
@@ -138,6 +167,7 @@ def refactor_temp(data):
         pass
     return data
 
+#Break the whole script into tokens
 def tokeniser(code):
     global tokens,cache,state,alt,last,msg
     code=code.replace("\n","")
@@ -216,6 +246,7 @@ def tokeniser(code):
         appender(cache)
     return tokens
 
+#To break more complex arithmetic expressions before their final value can be evaluated
 def expr_pre_processor(expr,partial=False,use_st=True):
     operators="%/+-*,<>"
     expr_tokens=break_expr(expr)
@@ -239,6 +270,8 @@ def expr_pre_processor(expr,partial=False,use_st=True):
         if x in symbol_table["vars"]:
             if type(symbol_table[x])==type("") and not partial:
                 new_expr_tokens.append("'"+symbol_table[x]+"'")
+            elif type(symbol_table[x])==type(null()):
+                new_expr_tokens.append(x)
             elif partial:
                 if x=="vars":
                     new_expr_tokens.append(f"vars")
@@ -270,23 +303,23 @@ def expr_pre_processor(expr,partial=False,use_st=True):
         if new_expr[i]=="*" and (new_expr[i-1]=="*" or new_expr[i-1]=="'"):
             raise Exception("Dangerous Input detected")
     new_expr=""
-    for x in new_expr_tokens:
+    for x in new_expr_tokens: 
         if x=="vars" and use_st==False:
             new_expr+=str("list(locals().keys())")
+        elif x in symbol_table["vars"] and type(symbol_table[x])==type(null()):
+            new_expr+="null"
         elif x=="vars":
             new_expr+=str(list(symbol_table.keys()))
         else:
             new_expr+=str(x)
     return new_expr
 
+#This evalutes the values of the broken down expressions
 def expr_post_processor(prep_expr):
     try:
-        val=eval(prep_expr,{},{})
+        val=eval(prep_expr,{"null":null()},{"null":null()})
     except Exception as e:
-        if "unsupported operand" in str(e) and 'compiled' in globals().keys():
-            return 1
-        else:
-            error(str(e),line_i)
+        error(str(e),line_i)
     if type(val)==type((1,2)):
         val=list(val)
         i=-1
@@ -303,12 +336,14 @@ def expr_post_processor(prep_expr):
     except:
         return val
 
+#This function is just for checking for overlapping items in lists
 def x_notin_y(x1: str,x2: list):
     for x in x2:
         if x in x1:
             return False
     return True
 
+#The main parser. This function parses all the tokens
 def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir="",runtime_func="main"):
     global symbol_table,funcs,trans,omit,vars_initialized,recursions,line_i
     recursions=[50,0]
@@ -336,6 +371,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
     blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx","boot"]+dir(builtins)
     blacklist_v2=["in","or","and","not"]
     line_i=0
+    #This the is internal function which processes a particular set of tokens
     def internal(tokenz,func_trace=1,inloop=False,main_func=False):
         i=-1
         ignore=[]
@@ -344,10 +380,12 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
             global fees
         if compile:
             global compiled,indents
+        #Going into a for loop for each token
         for x in tokenz:
             if gas:
                 fees+=len(str(x))
             i+=1
+            #Since the parser has a dynamic seeker, the parser can point to different tokens or ignore some tokens.
             if i not in ignore and x!=";":
                 args=0
                 n=0
@@ -362,9 +400,11 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         error(f"Missing ';' for line break on line {line_i}",line_i)
                     args+=1
                 line_i+=1
+                #Initialising variables
                 if x=="vars:" or x=="recursions:" or x=="function":
                     pass
                 elif func_trace==0:
+                    #This error is thrown because all code is supposed to be packed inside a main function
                     error("Found tokens outside function body",line_i)
                 if x=='vars:' and args>0 and not vars_initialized:
                     vars_initialized=True
@@ -383,22 +423,24 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         init_compile_str+=f"=[1]*{len(init_vars)}"
                         add_compile(init_compile_str)
                         indents-=1
-                        add_compile("boot=None")
+                        add_compile("boot=null()")
                     for y in init_vars:
                         if y not in symbol_table["vars"] and is_valid_var_name(y):
-                            symbol_table[y]=None
+                            symbol_table[y]=null()
                             symbol_table["vars"].append(y)
                         if gas:
                             fees+=len(y)
                     for y in range(1,args+1):
                         ignore.append(i+y)
                     continue
+                #These are the recursions for the number of loops the code will have to go through at max each time
                 if x=="recursions:" and args==1 and is_num(tokenz[i+1]) and int(tokenz[i+1])<=50 and recursions[1]==0:
                     recursions=[int(tokenz[i+1]),1]
                     if compile:
                         add_compile(f"recursions={tokenz[i+1]}")
                     ignore.append(i+1)
                     continue
+                #Importing scripts
                 if x=="#include" and args==1 and is_safe_path(tokenz[i+1],working_dir) and os.path.exists(working_dir+tokenz[i+1]+".dat") and os.path.exists(working_dir+tokenz[i+1]):
                     imported_vars=json.loads(open(working_dir+tokenz[i+1]).read())["symbol_table"]
                     for x in imported_vars.keys():
@@ -413,6 +455,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         fees+=int(open(tokenz[i+1]+".dat").read())
                     ignore.append(i+1)
                     continue
+                #Changing values of variables
                 if x == "var":
                     if (args==3) and tokenz[i+1] not in blacklist and x_notin_y(tokenz[i+1],blacklist_v2) and tokenz[i+1] in symbol_table["vars"] and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]):
                         if tokenz[i+3] in symbol_table['vars']:
@@ -460,6 +503,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         continue
                     else:
                         error(f"Syntax Error detected while defining variable on line {line_i}",line_i)
+                #Printing (not available on nodes)
                 if x=="print" and args==1:
                     ignore.append(i+1)
                     if debug:
@@ -476,6 +520,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             print("Invalid print statement specified")
                             error(f"Invalid print statement on line {line_i}",line_i)
                     continue
+                #Output TX from contract
                 if x=="tx":
                     if args==3 and tokenz[i+1] not in identifiers and tokenz[i+2] not in identifiers:
                         if compile:out_str=""
@@ -525,6 +570,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         ignore.append(i+2)
                         ignore.append(i+3)
                         continue
+                #If statements
                 if x=="if" and args==2:
                     if gas:
                         fees+=len(str(expr_pre_processor(tokenz[i+1])))
@@ -536,6 +582,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         add_compile(f"if {expr_pre_processor(tokenz[i+1],partial=True,use_st=False)}:")
                         indents+=1
                     if expr_post_processor(expr_pre_processor(tokenz[i+1])) and not compile:
+                        #As you can see the internal function is again called with the tokens inside of the if true statement
                         internal(tokeniser(tokenz[i+2][1:-1]))
                     elif compile:
                         pre_compile=compiled
@@ -546,8 +593,10 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     ignore.append(i+1)
                     ignore.append(i+2)
                     continue
+                #Initlializing functions
                 if x=="function" and args==2:
                     if tokenz[i+2].replace(" ","")=="()":
+                        #Empty functions aren't allowed
                         error("Empty Function Detected",line_i)
                     if (refactor_temp(tokenz[i+1]) not in symbol_table['vars'] or symbol_table['vars']=="") and refactor_temp(tokenz[i+1]) not in list(funcs.keys()):
                         ignore.append(i+1)
@@ -564,6 +613,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             indents-=1
                         funcs[tokenz[i+1]]=tokeniser(tokenz[i+2][1:-1]+";")
                     continue
+                #The next 2 if statements are for type conversion
                 if x=="str" and args==1:
                     if tokenz[i+1] in symbol_table["vars"] and type(symbol_table["vars"])!=type(""):
                         symbol_table[tokenz[i+1]]=add_sq(str(symbol_table[tokenz[i+1]]))
@@ -578,6 +628,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             add_compile(f"{tokenz[i+1]}=float({tokenz[i+1]})")
                         ignore.append(i+1)
                         continue
+                #To delete / free a variable
                 if x=="del" and args==1 and tokenz[i+1] in symbol_table["vars"]:
                     del symbol_table[tokenz[i+1]]
                     symbol_table["vars"].remove(tokenz[i+1])
@@ -585,6 +636,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         add_compile(f"del locals()[{add_sq(tokenz[i+1])}]")
                     ignore.append(i+1)
                     continue
+                #To return a value from a function
                 if x=="omit" and args==1:
                     ignore.append(i+1)
                     if tokenz[i+1][0]=="(" and tokenz[i+1][-1]==")":
@@ -609,6 +661,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         if gas:
                             fees+=len(str(tokenz[i+1]))
                     break
+                #Loops
                 if x=="loop" and args==1 and not inloop:
                     if compile:
                         add_compile("for loopi in range(1,recursions+1):")
@@ -632,10 +685,13 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             internal(tokeniser(tokenz[i+1][1:-1]),inloop=True,func_trace=func_trace+1)
                     ignore.append(i+1)
                     continue
+                #This part of the code is responsible for calling arrays and functions
                 if x[0]=="." and (x.split(".")[1] in symbol_table["vars"] or x.split(".")[1] in list(funcs.keys())):
                     object_val=x.split(".")[1]
                     if object_val in list(funcs.keys()):
+                        #If the called object is a function
                         if func_trace>2:
+                            #If the func trace that is the number of total function instances executed in a series to get to this call is more than 2 then a error is produced.
                                 error(f"Cannot execute functions inside of multiple running function instances on line {line_i}",line_i)
                         if args==0:
                             if object_val in list(funcs.keys()):
@@ -659,6 +715,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             omit=None
                             continue
                     if object_val in symbol_table["vars"] and type(symbol_table[object_val])==type([]):
+                        #If the object called is an array
                         if args==2:
                             if tokenz[i+1] == "+":
                                 if tokenz[i+2][0]=="(" and tokenz[i+2][-1]==")":
@@ -787,6 +844,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             ignore.append(i+2)
                             ignore.append(i+3)
                             continue
+                #Comments
                 if x=="//":
                     comments=""
                     for argx in range(1,args+1):
@@ -814,6 +872,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
         return compiled,list(funcs.keys())
     return symbol_table,trans
 
+#Running the script
 def run(script,symbol_table={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir="",runtime_func="main"):
     global formatted_code
     formatted_code=formatter(script)
@@ -822,6 +881,7 @@ def run(script,symbol_table={"txcurr":'LTZ',"txsender":'test','txamount':1,'txms
     parse_tokens=tokeniser(script)
     return parser(parse_tokens,symbol_table,debug,gas,compile,working_dir,runtime_func)
 
+#A temporary formatter
 def formatter(script):
     new_script=""
     indents=0
