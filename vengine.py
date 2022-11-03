@@ -88,7 +88,9 @@ def break_expr(expr):
     operators=["*","/","%","+","-","=","<",">"]
     cache=""
     msg=""
+    token_i=-1
     for x in expr:
+        token_i+=1
         if x=="(":
             if cache!="":
                 tokens.append(cache)
@@ -149,7 +151,7 @@ def break_expr(expr):
                 msg=""
                 tokens.append(cache+"'")
                 cache=""
-        if cache=="in" or cache=="or" or cache=="and" or cache=="not":
+        if (cache=="in" or cache=="or" or cache=="and" or cache=="not") and tokens[token_i+1]==" ":
             tokens.append(" "+cache+" ")
             cache=""
     if cache!="":
@@ -369,7 +371,6 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
     symbol_table["vars"]=list(symbol_table.keys())
     identifiers=["var","list","print","if","tx",";","int","str","float"]
     blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx","boot"]+dir(builtins)
-    blacklist_v2=["in","or","and","not"]
     line_i=0
     #This the is internal function which processes a particular set of tokens
     def internal(tokenz,func_trace=1,inloop=False,main_func=False):
@@ -410,7 +411,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     vars_initialized=True
                     init_vars=[]
                     for y in range(1,args+1):
-                        if tokenz[i+y] not in blacklist and x_notin_y(tokenz[i+y],blacklist_v2) and is_valid_var_name(tokenz[i+y]):
+                        if tokenz[i+y] not in blacklist and is_valid_var_name(tokenz[i+y]):
                             init_vars.append(tokenz[i+y])
                         else:
                             error("Invalid variable initialization")
@@ -457,7 +458,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     continue
                 #Changing values of variables
                 if x == "var":
-                    if (args==3) and tokenz[i+1] not in blacklist and x_notin_y(tokenz[i+1],blacklist_v2) and tokenz[i+1] in symbol_table["vars"] and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]):
+                    if (args==3) and tokenz[i+1] not in blacklist and tokenz[i+1] in symbol_table["vars"] and tokenz[i+2]=="=" and ((tokenz[i+3][0]=="'" and tokenz[i+3][-1]=="'") or (tokenz[i+3]=="true" or tokenz[i+3]=="false") or (tokenz[i+3][0]=="(" and tokenz[i+3][-1]==")") or is_num(tokenz[i+3]) or tokenz[i+3] in symbol_table["vars"]) and is_valid_var_name(tokenz[i+1]):
                         if tokenz[i+3] in symbol_table['vars']:
                             if gas:
                                 fees+=len(str(symbol_table[tokenz[i+3]]))
