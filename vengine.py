@@ -977,7 +977,7 @@ def vtx_debug(script,exe=True):
         except:
             return 0
     else:
-        return run(vtx2vt(script),compile=1,debug=False)[0]
+        return vtx2vt(script)
 
 if __name__=="__main__":
     env={}
