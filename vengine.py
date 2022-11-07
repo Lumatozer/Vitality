@@ -31,7 +31,10 @@ def is_safe_path(path,folder=""):
 
 #To gracefully exit with an error
 def error(disc="<3",line=1):
-    line_on_error=formatted_code.split('\n')[line-1]
+    try:
+        line_on_error=formatted_code.split('\n')[line-1]
+    except:
+        line_on_error="---"
     if line!=0:
         sys.exit(f"Line {line} : {line_on_error} \n"+f"Error {disc}")
     else:
@@ -356,7 +359,7 @@ def x_notin_y(x1: str,x2: list):
 def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir="",runtime_func="main"):
     global symbol_table,funcs,trans,omit,vars_initialized,recursions,line_i
     symbol_table=st
-    funcs={}
+    funcs=func_mapper(tokenz,init=True)
     for x in symbol_table:
         if symbol_table[x]=="|null":
             symbol_table[x]=null()
@@ -431,7 +434,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         init_compile_str=""
                         for y in init_vars:
                             init_compile_str+=f"{y},"
-                        init_compile_str+=f"=[1]*{len(init_vars)}"
+                        init_compile_str+=f"=[null()]*{len(init_vars)}"
                         add_compile(init_compile_str)
                         indents-=1
                         add_compile("boot=null()")
@@ -452,7 +455,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     ignore.append(i+1)
                     continue
                 #Importing scripts
-                if x=="#include" and args==1 and is_safe_path(tokenz[i+1],working_dir) and os.path.exists(working_dir+tokenz[i+1]+".dat") and os.path.exists(working_dir+tokenz[i+1]):
+                if x=="#require" and args==1 and is_safe_path(tokenz[i+1],working_dir) and os.path.exists(working_dir+tokenz[i+1]+".dat") and os.path.exists(working_dir+tokenz[i+1]):
                     imported_vars=json.loads(open(working_dir+tokenz[i+1]).read())["symbol_table"]
                     for x in imported_vars.keys():
                         symbol_table[x]=imported_vars[x]
@@ -491,7 +494,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                 if is_num(tokenz[i+3]):
                                     add_compile(f"globals()['{tokenz[i+1]}']={(tokenz[i+3])}")
                                 else:
-                                    add_compile(f"globals()['{tokenz[i+1]}']={add_sq(refactor_temp(tokenz[i+3]))}")
+                                    add_compile(f"globals()['{tokenz[i+1]}']={(refactor_temp(tokenz[i+3]))}")
                             symbol_table[tokenz[i+1]]=expr_post_processor(expr_pre_processor(tokenz[i+3]))
                         ignore.append(i+1)
                         ignore.append(i+2)
@@ -590,7 +593,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     if tokenz[i+2].replace(" ","")=="()":
                         #Empty functions aren't allowed
                         error("Empty Function Detected",line_i)
-                    if (refactor_temp(tokenz[i+1]) not in symbol_table['vars'] or symbol_table['vars']=="") and refactor_temp(tokenz[i+1]) not in list(funcs.keys()):
+                    if (refactor_temp(tokenz[i+1]) not in symbol_table['vars'] or symbol_table['vars']=="") and refactor_temp(tokenz[i+1]) in list(funcs.keys()):
                         ignore.append(i+1)
                         ignore.append(i+2)
                         if gas:
@@ -603,6 +606,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             if last_compiled_state==compiled:
                                 add_compile("pass")
                             indents-=1
+                            add_compile(f"globals()['{tokenz[i+1]}']={tokenz[i+1]}")
                         funcs[tokenz[i+1]]=tokeniser(tokenz[i+2][1:-1]+";")
                     continue
                 #The next 2 if statements are for type conversion
@@ -829,6 +833,17 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             ignore.append(i+2)
                             ignore.append(i+3)
                             continue
+                    if object_val in symbol_table["vars"] and type(symbol_table[object_val])==type(""):
+                        print("AEY")
+                        if args==2:
+                            if tokenz[i+1]=="split" and tokenz[i+2] in symbol_table["vars"]:
+                                symbol_table[tokenz[i+2]]=symbol_table[object_val].split(",")
+                                if gas:
+                                    fees+=len(symbol_table[object_val].split(","))
+                                if compile:
+                                    add_compile(f"{tokenz[i+2]}={object_val}.split(',')")
+                                ignore.append(i+1)
+                                ignore.append(i+2)
                 #Comments
                 if x=="//":
                     comments=""
@@ -881,7 +896,8 @@ def vtx2vt(script,new=True):
         final_tokens=[]
         include_vars=[]
         instance=0
-    local_instance=1+instance
+    instance+=1
+    local_instance=instance
     for x in tokenz:
         i+=1
         #Since the vtx2vt parser also has the same dynamic seeker, this parser can also point to different tokens or ignore some tokens.
@@ -898,11 +914,11 @@ def vtx2vt(script,new=True):
                     except:
                         error(f"Missing ';' for line break on line")
                     args+=1
-            if x[0]=="(" and x[-1]==")" and tokenz[i-1] not in ["vars","tx","recursions","loopi","import","os","json","contract_tx","boot","null"]+dir(builtins)+["var","list","print","if","tx",";","int","str","float"]:
+            if x[0]=="(" and x[-1]==")" and tokenz[i-1] not in ["vars","tx","recursions","loopi","import","os","json","contract_tx","boot","null","omit"]+dir(builtins)+["var","list","print","if","tx",";","int","str","float"]:
                 final_tokens.append("(")
                 vtx2vt(x[1:-1],new=False)
                 final_tokens.append(")")
-            elif x=="link" and args==1:
+            elif x=="include" and args==1:
                 vtx2vt(open(tokenz[i+1].replace("'","")).read(),new=False)
                 ignore.append(i+1)
                 ignore.append(i+2)
@@ -915,11 +931,15 @@ def vtx2vt(script,new=True):
     translated_vt=""
     for x in final_tokens:
         translated_vt+=(x+" ")
+
     if local_instance==1:
         var_str="vars: "
         for x in include_vars:
             var_str+=(x+" ")
-        var_str+=";"
+        if var_str=="vars: ":
+            var_str=""
+        else:
+            var_str+=";"
         translated_vt=var_str+"\n"+translated_vt
     return formatter(translated_vt)
 
@@ -957,27 +977,33 @@ def vtx_debug(script,exe=True):
         try:
             print("-"*10+"Compiling-VTX-VT"+"-"*10)
             compiled_vtx=vtx2vt(script)
+            print(compiled_vt)
             print("Success")
         except Exception as e:
             return f"Failed Compiling VTX --> VT : {str(e)}"
         try:
-            print("-"*10+"Compiling-VT-PY"+"-"*11)
-            compiled_vt=run(vtx2vt(script),compile=1,debug=False)[0]
+            print("-"*10+"Executing-VT"+"-"*11)
+            compiled_vt=run(compiled_vtx,debug=False)
+            print(compiled_vt)
             print("Success")
         except Exception as e:
-            return f"Failed Compiling VT --> PY : {str(e)}"
-        try:
-            print("-"*8+"Executing-Compiled-VTX"+"-"*6)
-            globs={"null":null}
-            locs={"null":null}
-            exec(compiled_vt,globs,locs)
-            print("Success")
-            print("-"*15+"Output"+"-"*15)
-            return locs
-        except:
-            return 0
+            return f"Failed Executing-VT : {str(e)}"
     else:
-        return vtx2vt(script)
+        return 1,vtx2vt(script)
+
+def func_mapper(tokenz,init=False):
+    global funcs_mapped
+    if init:
+        funcs_mapped={}
+    i=-1
+    for x in tokenz:
+        i+=1
+        if x=="function":
+            funcs_mapped[tokenz[i+1]]=tokenz[i+2][1:-1]
+        elif x[0]=="(" and x[-1]==")":
+            func_mapper(tokeniser(x[1:-1]))
+    if init:
+        return funcs_mapped
 
 if __name__=="__main__":
     env={}
