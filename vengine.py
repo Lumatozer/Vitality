@@ -137,7 +137,7 @@ def break_expr(expr):
         if x==" ":
             if msg=="":
                 if cache=="":
-                    print(1)
+                    pass
                 else:
                     if cache!=" ":
                         tokens.append(cache)
@@ -380,7 +380,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
     omit=None
     symbol_table["vars"]=list(symbol_table.keys())
     identifiers=["var","list","print","if","tx",";","int","str","float"]
-    blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx","boot","null"]+dir(builtins)
+    blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx","boot","null"]+dir(builtins)+["var","list","print","if","tx",";","int","str","float"]
     line_i=0
     #This the is internal function which processes a particular set of tokens
     def internal(tokenz,func_trace=1,inloop=False,main_func=False):
@@ -898,7 +898,7 @@ def vtx2vt(script,new=True):
                     except:
                         error(f"Missing ';' for line break on line")
                     args+=1
-            if x[0]=="(" and x[-1]==")":
+            if x[0]=="(" and x[-1]==")" and tokenz[i-1] not in ["vars","tx","recursions","loopi","import","os","json","contract_tx","boot","null"]+dir(builtins)+["var","list","print","if","tx",";","int","str","float"]:
                 final_tokens.append("(")
                 vtx2vt(x[1:-1],new=False)
                 final_tokens.append(")")
@@ -977,7 +977,7 @@ def vtx_debug(script,exe=True):
         except:
             return 0
     else:
-        return run(vtx2vt(script),compile=1)[0]
+        return run(vtx2vt(script),compile=1,debug=False)[0]
 
 if __name__=="__main__":
     env={}
