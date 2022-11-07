@@ -341,12 +341,7 @@ def expr_post_processor(prep_expr):
                 val[i]=list(x)
     if type(val)==type(None):
         return null()
-    try:
-        if type(val)!=type(True):
-            return ltz_round(val)
-        return val
-    except:
-        return val
+    return val
 
 #This function is just for checking for overlapping items in lists
 def x_notin_y(x1: str,x2: list):
@@ -833,8 +828,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             ignore.append(i+2)
                             ignore.append(i+3)
                             continue
-                    elif object_val in symbol_table["vars"] and type(symbol_table[object_val])==type(""):
-                        print("AEY")
+                    elif tokenz[i+2] in symbol_table["vars"] and type(symbol_table[object_val])==type(""):
                         if args==2:
                             if tokenz[i+1]=="split" and tokenz[i+2] in symbol_table["vars"]:
                                 symbol_table[tokenz[i+2]]=symbol_table[object_val].split(",")
