@@ -214,11 +214,11 @@ def tokeniser(code):
         if x=="'" and state=="str" and msg!="first_quote":
             execd=True
             appender(cache)
-        if x==";" and cache!="" and state!="expr":
+        if x==";" and cache!="" and state!="expr" and state!="str":
             execd=True
             appender(cache)
             appender(x)
-        elif x==";" and state!="expr":
+        elif x==";" and state!="expr" and msg=="" and state!="str":
             appender(x)
         if x==")" and state=="expr":
             cache+=x
@@ -356,6 +356,7 @@ def x_notin_y(x1: str,x2: list):
 def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir="",runtime_func="main"):
     global symbol_table,funcs,trans,omit,vars_initialized,recursions,line_i
     symbol_table=st
+    funcs={}
     for x in symbol_table:
         if symbol_table[x]=="|null":
             symbol_table[x]=null()
@@ -376,11 +377,10 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
         st["txcurr"]="LTZ"
         st["txmsg"]="test"
     trans=None
-    funcs={}
     omit=None
     symbol_table["vars"]=list(symbol_table.keys())
     identifiers=["var","list","print","if","tx",";","int","str","float"]
-    blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx","boot"]+dir(builtins)
+    blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx","boot","null"]+dir(builtins)
     line_i=0
     #This the is internal function which processes a particular set of tokens
     def internal(tokenz,func_trace=1,inloop=False,main_func=False):
@@ -854,7 +854,10 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
     if compile:
         if compiled[-1]=="\n":
             compiled=compiled[:-1]
-        return compiled,list(funcs.keys())
+        return_out=compiled,list(funcs.keys())
+        funcs={}
+        symbol_table={}
+        return return_out
     st_export={}
     for x in symbol_table.copy():
         if "<vengine.null object at 0x" in str(symbol_table[x]):
@@ -864,7 +867,61 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                 st_export[x]=str(symbol_table).replace('|',"")
             else:
                 st_export[x]=symbol_table[x]
+    symbol_table={}
     return st_export,trans
+
+def vtx2vt(script,new=True):
+    if type(script)!=type([]):
+        script=tokeniser(script)
+    tokenz=script
+    i=-1
+    ignore=[]
+    global final_tokens,include_vars,instance
+    if new:
+        final_tokens=[]
+        include_vars=[]
+        instance=0
+    local_instance=1+instance
+    for x in tokenz:
+        i+=1
+        #Since the vtx2vt parser also has the same dynamic seeker, this parser can also point to different tokens or ignore some tokens.
+        if i not in ignore:
+            args=0
+            n=0
+            if x!=";":
+                while True:
+                    n+=1
+                    try:
+                        if tokenz[i+n]==";":
+                            n+=2
+                            break
+                    except:
+                        error(f"Missing ';' for line break on line")
+                    args+=1
+            if x[0]=="(" and x[-1]==")":
+                final_tokens.append("(")
+                vtx2vt(x[1:-1],new=False)
+                final_tokens.append(")")
+            elif x=="link" and args==1:
+                vtx2vt(open(tokenz[i+1].replace("'","")).read(),new=False)
+                ignore.append(i+1)
+                ignore.append(i+2)
+            elif x=="var":
+                if tokenz[i+1] not in include_vars:
+                    include_vars.append(tokenz[i+1])
+                final_tokens.append(x)
+            else:
+                final_tokens.append(x)
+    translated_vt=""
+    for x in final_tokens:
+        translated_vt+=(x+" ")
+    if local_instance==1:
+        var_str="vars: "
+        for x in include_vars:
+            var_str+=(x+" ")
+        var_str+=";"
+        translated_vt=var_str+"\n"+translated_vt
+    return formatter(translated_vt)
 
 #Running the script
 def run(script,symbol_table={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'test'},debug=True,gas=False,compile=False,working_dir="",runtime_func="main"):
@@ -873,7 +930,8 @@ def run(script,symbol_table={"txcurr":'LTZ',"txsender":'test','txamount':1,'txms
     if '"' in script:
         error('Double quote character " is not allowed',0)
     parse_tokens=tokeniser(script)
-    return parser(parse_tokens,symbol_table,debug,gas,compile,working_dir,runtime_func)
+    parser_output=parser(parse_tokens,symbol_table,debug,gas,compile,working_dir,runtime_func)
+    return parser_output
 
 #A temporary formatter
 def formatter(script):
@@ -892,6 +950,34 @@ def formatter(script):
             new_script+="\n"+(" "*indents)
     return new_script
 
+def vtx_debug(script,exe=True):
+    global formatted_code
+    formatted_code=formatter(script)
+    if exe:
+        try:
+            print("-"*10+"Compiling-VTX-VT"+"-"*10)
+            compiled_vtx=vtx2vt(script)
+            print("Success")
+        except Exception as e:
+            return f"Failed Compiling VTX --> VT : {str(e)}"
+        try:
+            print("-"*10+"Compiling-VT-PY"+"-"*11)
+            compiled_vt=run(vtx2vt(script),compile=1,debug=False)[0]
+            print("Success")
+        except Exception as e:
+            return f"Failed Compiling VT --> PY : {str(e)}"
+        try:
+            print("-"*8+"Executing-Compiled-VTX"+"-"*6)
+            globs={"null":null}
+            locs={"null":null}
+            exec(compiled_vt,globs,locs)
+            print("Success")
+            print("-"*15+"Output"+"-"*15)
+            return locs
+        except:
+            return 0
+    else:
+        return run(vtx2vt(script),compile=1)[0]
 
 if __name__=="__main__":
     env={}

@@ -164,9 +164,31 @@ The syntax for executing such function which return a value is
 .{func_name} {var_name};
 ```
 This stores the value omitted by the function in the variable provided.
+## VTX
+VTX is a locally interpreted and compiled version of vitality which allows import code from external files.\
+All of the dependencies are compiled as a standalone vitality script.
+```python
+# Compiling script
+import vengine
+script=____
+compiled=vengine.vtx_debug(script,exe=0)
+print(compiled)
+```
+file 1
+```c
+function main (
+    link file_2;
+);
+```
+file 2
+```c
+function test (
+    omit 1;
+);
+```
 ## Smart Contract Examples
 ### Funding Page
-```python
+```c
 vars: funding_page fund_receiver percent funding_page_money sending_amount funding_page_money booted ltz_bal ltzs_bal dissolve to_pay;
 function main (
     var funding_page = '404cdd7bc109c432f8cc2443b45bcfe95980f5107215c645236e577929ac3e52';
