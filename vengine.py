@@ -2,24 +2,30 @@
 import os,json,sys,builtins
 import traceback
 
-#Null class object
-class null:
-    def __init__(self) -> None:
-        pass
-    def __add__(self,x):
+def valid_type(type_query):
+    if type_query in ["num","arr","str","bool"]:
+        return True
+    return False
+
+def type_default(type_query):
+    if type_query=="arr":
+        return []
+    if type_query=="str":
+        return ""
+    if type_query=="num":
         return 1
-    def __sub__(self,x):
-        return 1
-    def __truediv__(self,x):
-        return 1
-    def __rtruediv__(self,x):
-        return 1
-    def __mod__(self,x):
-        return 1
-    def __eq__(self, __o: object) -> bool:
-        if str(__o)=="null":
-            return True
-        return False
+    if type_query=="bool":
+        return True
+
+def type2vartype(type_query):
+    if type_query==type([]):
+        return "arr"
+    if type_query==type(""):
+        return "str"
+    if type_query==type(1) or type_query==type(0.1):
+        return "num"
+    if type_query==type(True):
+        return "bool"
 
 #These functions are responsible for preventing path traversal
 def get_cwd():
@@ -278,8 +284,6 @@ def expr_pre_processor(expr,partial=False,use_st=True):
         if x in symbol_table["vars"]:
             if type(symbol_table[x])==type("") and not partial:
                 new_expr_tokens.append("'"+symbol_table[x]+"'")
-            elif type(symbol_table[x])==type(null()):
-                new_expr_tokens.append(x)
             elif partial:
                 if x=="vars":
                     new_expr_tokens.append(f"vars")
@@ -316,8 +320,6 @@ def expr_pre_processor(expr,partial=False,use_st=True):
             error("Dangerous Input detected",line_i)
         if x=="vars" and use_st==False:
             new_expr+=str("list(locals().keys())")
-        elif x in symbol_table["vars"] and type(symbol_table[x])==type(null()):
-            new_expr+="null"
         elif x=="vars":
             new_expr+=str(list(symbol_table.keys()))
         else:
@@ -327,7 +329,7 @@ def expr_pre_processor(expr,partial=False,use_st=True):
 #This evalutes the values of the broken down expressions
 def expr_post_processor(prep_expr):
     try:
-        val=eval(prep_expr,{"null":null()},{"null":null()})
+        val=eval(prep_expr,{},{})
     except Exception as e:
         error(str(e),line_i)
     if type(val)==type((1,2)):
@@ -340,7 +342,7 @@ def expr_post_processor(prep_expr):
             if type(x)==type((1,2)):
                 val[i]=list(x)
     if type(val)==type(None):
-        return null()
+        error(f"Expression {prep_expr} has no valid output")
     return val
 
 #This function is just for checking for overlapping items in lists
@@ -355,9 +357,6 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
     global symbol_table,funcs,trans,omit,vars_initialized,recursions,line_i
     symbol_table=st
     funcs=func_mapper(tokenz,init=True)
-    for x in symbol_table:
-        if symbol_table[x]=="|null":
-            symbol_table[x]=null()
     recursions=[50,0]
     vars_initialized=False
     if compile:
@@ -419,24 +418,25 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     vars_initialized=True
                     init_vars=[]
                     for y in range(1,args+1):
-                        if tokenz[i+y] not in blacklist and is_valid_var_name(tokenz[i+y]):
+                        if tokenz[i+y].split(":")[0] not in blacklist and is_valid_var_name(tokenz[i+y].split(":")[0]) and valid_type(tokenz[i+y].split(":")[1]):
                             init_vars.append(tokenz[i+y])
                         else:
                             error("Invalid variable initialization")
                     if compile:
                         add_compile("if 'boot' not in list(locals().keys()):")
                         indents+=1
-                        init_compile_str=""
+                        init_compile_str_1=""
+                        init_compile_str_2="="
                         for y in init_vars:
-                            init_compile_str+=f"{y},"
-                        init_compile_str+=f"=[null()]*{len(init_vars)}"
-                        add_compile(init_compile_str)
+                            init_compile_str_1+=f"{y.split(':')[0]},"
+                            init_compile_str_2+=f"{type_default(y.split(':')[1])},"
+                        add_compile(init_compile_str_1+init_compile_str_2)
                         indents-=1
-                        add_compile("boot=null()")
+                        add_compile("boot=1")
                     for y in init_vars:
-                        if y not in symbol_table["vars"] and is_valid_var_name(y):
-                            symbol_table[y]=null()
-                            symbol_table["vars"].append(y)
+                        if y.split(':')[0] not in symbol_table["vars"]:
+                            symbol_table[y.split(':')[0]]=type_default(y.split(':')[1])
+                            symbol_table["vars"].append(y.split(':')[0])
                         if gas:
                             fees+=len(y)
                     for y in range(1,args+1):
@@ -468,12 +468,16 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                 elif x == "var":
                     if (args==3) and tokenz[i+1] not in blacklist and tokenz[i+1] in symbol_table["vars"] and is_valid_var_name(tokenz[i+1]) and "|" not in tokenz[i+3]:
                         if tokenz[i+3] in symbol_table['vars']:
+                            if type(symbol_table[tokenz[i+1]])!=type(symbol_table[tokenz[i+3]]):
+                                error(f"Cannot assign variable '{tokenz[i+1]}' of type {type(symbol_table[tokenz[i+1]])} a value of type {type(symbol_table[tokenz[i+3]])}")
                             if gas:
                                 fees+=len(str(symbol_table[tokenz[i+3]]))
                             if compile:
                                 add_compile(f"globals()['{tokenz[i+1]}']={tokenz[i+3]}")
                             symbol_table[tokenz[i+1]]=refactor_temp(symbol_table[tokenz[i+3]])
                         elif tokenz[i+3]=="true" or tokenz[i+3]=='false':
+                            if type(symbol_table[tokenz[i+1]])!=type(True):
+                                error(f"Cannot assign variable '{tokenz[i+1]}' of type {type(symbol_table[tokenz[i+1]])} a value of type {type(True)}")
                             if gas:
                                 fees+=10
                             if tokenz[i+3]=="true":
@@ -490,6 +494,9 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                     add_compile(f"globals()['{tokenz[i+1]}']={(tokenz[i+3])}")
                                 else:
                                     add_compile(f"globals()['{tokenz[i+1]}']={(refactor_temp(tokenz[i+3]))}")
+                            var_val=expr_post_processor(expr_pre_processor(tokenz[i+3]))
+                            if type(var_val)!=type(symbol_table[tokenz[i+1]]):
+                                error(f"Cannot assign variable '{tokenz[i+1]}' of type {type(symbol_table[tokenz[i+1]])} a value of type {type(var_val)}")
                             symbol_table[tokenz[i+1]]=expr_post_processor(expr_pre_processor(tokenz[i+3]))
                         ignore.append(i+1)
                         ignore.append(i+2)
@@ -511,7 +518,6 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             print(expr_post_processor(expr_pre_processor(tokenz[i+1])))
                             continue
                         else:
-                            print("Invalid print statement specified")
                             error(f"Invalid print statement on line {line_i}",line_i)
                     continue
                 #Output TX from contract
@@ -604,21 +610,6 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             add_compile(f"globals()['{tokenz[i+1]}']={tokenz[i+1]}")
                         funcs[tokenz[i+1]]=tokeniser(tokenz[i+2][1:-1]+";")
                     continue
-                #The next 2 if statements are for type conversion
-                elif x=="str" and args==1:
-                    if tokenz[i+1] in symbol_table["vars"] and type(symbol_table["vars"])!=type(""):
-                        symbol_table[tokenz[i+1]]=add_sq(str(symbol_table[tokenz[i+1]]))
-                        if compile:
-                            add_compile(f"{tokenz[i+1]}=str({tokenz[i+1]})")
-                        ignore.append(i+1)
-                        continue
-                elif x=="float" and args==1:
-                    if tokenz[i+1] in symbol_table["vars"] and type(symbol_table["vars"])!=type(0.1):
-                        symbol_table[tokenz[i+1]]=float(symbol_table[tokenz[i+1]])
-                        if compile:
-                            add_compile(f"{tokenz[i+1]}=float({tokenz[i+1]})")
-                        ignore.append(i+1)
-                        continue
                 #To delete / free a variable
                 elif x=="del" and args==1 and tokenz[i+1] in symbol_table["vars"]:
                     del symbol_table[tokenz[i+1]]
@@ -699,6 +690,8 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                 add_compile(f'globals()["{tokenz[i+1].replace("$","")}"]={object_val}()')
                             else:
                                 internal(funcs[object_val],func_trace=func_trace+1)
+                            if type(omit)==type(None):
+                                error(f"Function returned 'None' while a value type of {type(symbol_table[tokenz[i+1].replace('','')])} was expected")
                             if gas:
                                 fees+=len(str(omit))
                             symbol_table[tokenz[i+1].replace("$","")]=omit
@@ -754,6 +747,8 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                 symbol_table[object_val][val]
                             except:
                                 error(f"Invalid index for list on line {line_i}",line_i)
+                            if type(symbol_table[tokenz[i+3].replace('$','')])!=type(symbol_table[object_val][val]):
+                                error(f"Cannot assign variable '{tokenz[i+3].replace('$','')}' of type {type(symbol_table[tokenz[i+3].replace('$','')])} a value of type {type(symbol_table[object_val][val])}")
                             symbol_table[tokenz[i+3].replace("$","")]=symbol_table[object_val][val]
                             if compile:
                                 add_compile(f'{tokenz[i+3].replace("$","")}={object_val}[{tokenz[i+2]}]')
@@ -764,6 +759,8 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             ignore.append(i+3)
                             continue
                         elif tokenz[i+1]=="len" and args==2 and tokenz[i+2].replace("$","") in symbol_table["vars"]:
+                            if type(tokenz[i+2].replace("$",""))!=type(len(symbol_table[object_val])):
+                                error(f"Cannot assign variable '{tokenz[i+2].replace('$','')}' of type {type(tokenz[i+2].replace('$',''))} a value of type {type(len(symbol_table[object_val]))}")
                             symbol_table[tokenz[i+2].replace("$","")]=len(symbol_table[object_val])
                             if compile:
                                 add_compile(f'{tokenz[i+2].replace("$","")}=len({object_val})')
@@ -819,6 +816,8 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                 symbol_table[object_val].index(val)
                             except:
                                 error(f"Invalid index for list on line {line_i}",line_i)
+                            if type(symbol_table[tokenz[i+3].replace("$","")])!=type(symbol_table[object_val].index(val)):
+                                error(f"Cannot assign variable '{tokenz[i+3].replace('$','')}' of type {type(tokenz[i+3].replace('$',''))} a value of type {type(symbol_table[object_val].index(val))}")
                             symbol_table[tokenz[i+3].replace("$","")]=symbol_table[object_val].index(val)
                             if compile:
                                 add_compile(f'{tokenz[i+3].replace("$","")}={object_val}.index({tokenz[i+2]})')
@@ -828,16 +827,6 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             ignore.append(i+2)
                             ignore.append(i+3)
                             continue
-                    elif tokenz[i+2] in symbol_table["vars"] and type(symbol_table[object_val])==type(""):
-                        if args==2:
-                            if tokenz[i+1]=="split" and tokenz[i+2] in symbol_table["vars"]:
-                                symbol_table[tokenz[i+2]]=symbol_table[object_val].split(",")
-                                if gas:
-                                    fees+=len(symbol_table[object_val].split(","))
-                                if compile:
-                                    add_compile(f"{tokenz[i+2]}={object_val}.split(',')")
-                                ignore.append(i+1)
-                                ignore.append(i+2)
                 #Comments
                 elif x=="//":
                     comments=""
@@ -888,7 +877,7 @@ def vtx2vt(script,new=True):
     global final_tokens,include_vars,instance
     if new:
         final_tokens=[]
-        include_vars=[]
+        include_vars={}
         instance=0
     instance+=1
     local_instance=instance
@@ -918,7 +907,13 @@ def vtx2vt(script,new=True):
                 ignore.append(i+2)
             elif x=="var":
                 if tokenz[i+1] not in include_vars:
-                    include_vars.append(tokenz[i+1])
+                    if tokenz[i+3] not in include_vars:
+                        if tokenz[i+3] not in ["true","false"]:
+                            include_vars[tokenz[i+1]]=type2vartype(type(eval(tokenz[i+3])))
+                        else:
+                            include_vars[tokenz[i+1]]="bool"
+                    else:
+                        include_vars[tokenz[i+1]]=include_vars[tokenz[i+3]]
                 final_tokens.append(x)
             else:
                 final_tokens.append(x)
@@ -929,7 +924,7 @@ def vtx2vt(script,new=True):
     if local_instance==1:
         var_str="vars: "
         for x in include_vars:
-            var_str+=(x+" ")
+            var_str+=(f"{x}:{include_vars[x]}"+" ")
         if var_str=="vars: ":
             var_str=""
         else:
@@ -981,6 +976,7 @@ def vtx_debug(script,exe=True):
             print(compiled_vt)
             print("Success")
         except Exception as e:
+            traceback.print_exc()
             return f"Failed Executing-VT : {str(e)}"
     else:
         return vtx2vt(script)

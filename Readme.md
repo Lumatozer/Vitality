@@ -16,7 +16,7 @@ print(vengine.formatter(script))
 ## Basics
 To create a variable and assign a value to it
 ```python
-vars: {variable_name};
+vars: {variable_name}:{variable_type};
 var {variable_name} = {variable_value};
 Example
 var a = 10;
@@ -81,14 +81,14 @@ if (condition or variable) (
 ```
 Examples
 ```python
-vars: a;
+vars: a:bool;
 function main (
     var a = (1==1);
     if (a) (print 1;);
 );
 ```
 ```python
-vars: a;
+vars: a:bool;
 function main (
     var a = (1==1);
     if (a) (
@@ -189,7 +189,7 @@ function test (
 ## Smart Contract Examples
 ### Funding Page
 ```c
-vars: funding_page fund_receiver percent funding_page_money sending_amount funding_page_money booted ltz_bal ltzs_bal dissolve to_pay;
+vars: funding_page:str fund_receiver:str percent:num funding_page_money:num sending_amount:num funding_page_money:num booted:bool ltz_bal:num ltzs_bal:num dissolve:bool to_pay:num;
 function main (
     var funding_page = '404cdd7bc109c432f8cc2443b45bcfe95980f5107215c645236e577929ac3e52';
     var fund_receiver = '1dd8754d7f4192e973e0774edd395251621322f386fc02fd6b267bf4ba982cc9';
@@ -207,7 +207,7 @@ function main (
 ```
 ### LTZ && LTZ-S Exchange
 ```python
-vars: booted ltz_bal ltzs_bal dissolve to_pay;
+vars: booted:bool ltz_bal:num ltzs_bal:num dissolve:bool to_pay:num;
 function main (
     if (dissolve == 1) (var dissolve=false;);
     if (txsender=='0x0' and txmsg=='dissolve') (var dissolve=true;);
