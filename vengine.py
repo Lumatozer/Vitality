@@ -68,9 +68,11 @@ def is_num(chk,integer=False):
 
 #Check if the variable names are valid or not
 def is_valid_var_name(varname):
+    if is_num(varname[0]):
+        return False
     allowed="abcdefghijklmnopqrstuvwxyz"
     allowed+=allowed.upper()
-    allowed+="_"
+    allowed+="1234567890_"
     if varname[0]=="_":
         return False
     for x in allowed:
@@ -377,7 +379,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
     omit=None
     symbol_table["vars"]=list(symbol_table.keys())
     identifiers=["var","list","print","if","tx",";","int","str","float"]
-    blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx","boot","null"]+dir(builtins)+["var","list","print","if","tx",";","int","str","float"]
+    blacklist=["vars","tx","recursions","loopi","import","os","json","contract_tx","boot"]+dir(builtins)+["var","list","print","if","tx",";","int","str","float"]
     line_i=0
     #This the is internal function which processes a particular set of tokens
     def internal(tokenz,func_trace=1,inloop=False,main_func=False):
@@ -856,15 +858,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
         funcs={}
         symbol_table={}
         return return_out
-    st_export={}
-    for x in symbol_table.copy():
-        if "<vengine.null object at 0x" in str(symbol_table[x]):
-            st_export[x]="|null"
-        else:
-            if '|' in str(symbol_table[x]):
-                st_export[x]=str(symbol_table).replace('|',"")
-            else:
-                st_export[x]=symbol_table[x]
+    st_export=symbol_table
     symbol_table={}
     return st_export,trans
 
@@ -897,7 +891,7 @@ def vtx2vt(script,new=True):
                     except:
                         error(f"Missing ';' for line break on line")
                     args+=1
-            if x[0]=="(" and x[-1]==")" and tokenz[i-1] not in ["vars","tx","recursions","loopi","import","os","json","contract_tx","boot","null","omit"]+dir(builtins)+["var","list","print","if","tx",";","int","str","float"]:
+            if x[0]=="(" and x[-1]==")" and tokenz[i-1] not in ["vars","tx","recursions","loopi","import","os","json","contract_tx","boot","omit"]+dir(builtins)+["var","list","print","if","tx",";","int","str","float"]:
                 final_tokens.append("(")
                 vtx2vt(x[1:-1],new=False)
                 final_tokens.append(")")
