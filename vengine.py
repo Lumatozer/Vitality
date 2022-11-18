@@ -858,7 +858,10 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
         funcs={}
         symbol_table={}
         return return_out
-    st_export=symbol_table
+    st_export={}
+    for x in symbol_table:
+        if type(symbol_table[x]) in [type(1),type(1.0),type(""),type([])]:
+            st_export[x]=symbol_table[x]
     symbol_table={}
     return st_export,trans
 
