@@ -3,7 +3,7 @@ import os,json,sys,builtins
 import traceback
 
 def valid_type(type_query):
-    if type_query in ["num","arr","str","bool"]:
+    if type_query in ["num","arr","str","bool","set"]:
         return True
     return False
 
@@ -16,6 +16,8 @@ def type_default(type_query):
         return 1
     if type_query=="bool":
         return True
+    if type_query=="set":
+        return {}
 
 def type2vartype(type_query):
     if type_query==type([]):
@@ -26,6 +28,8 @@ def type2vartype(type_query):
         return "num"
     if type_query==type(True):
         return "bool"
+    if type_query==type_query({}):
+        return {}
 
 #These functions are responsible for preventing path traversal
 def get_cwd():
@@ -68,9 +72,11 @@ def is_num(chk,integer=False):
 
 #Check if the variable names are valid or not
 def is_valid_var_name(varname):
+    if varname[0]==".":
+        return False
     if is_num(varname[0]):
         return False
-    allowed="abcdefghijklmnopqrstuvwxyz"
+    allowed="abcdefghijklmnopqrstuvwxyz."
     allowed+=allowed.upper()
     allowed+="1234567890_"
     if varname[0]=="_":
@@ -109,11 +115,25 @@ def break_expr(expr):
             cache=""
             msg=""
             continue
-        if x == "=" and x==tokens[len(tokens)-1]:
+        elif x=="[":
+            if cache!="":
+                tokens.append(cache)
+            tokens.append("]")
+            cache=""
+            msg=""
+            continue
+        elif x=="{":
+            if cache!="":
+                tokens.append(cache)
+            tokens.append("}")
+            cache=""
+            msg=""
+            continue
+        elif x == "=" and x==tokens[len(tokens)-1]:
             del tokens[len(tokens)-1]
             tokens.append("==")
             continue
-        if x in operators:
+        elif x in operators:
             append_before=""
             if cache!="":
                 if cache[-1]=="!":
@@ -124,16 +144,30 @@ def break_expr(expr):
             msg=""
             tokens.append((append_before+x))
             continue
-        if x==")":
+        elif x==")":
             if cache!="":
                 tokens.append(cache)
             cache=""
             msg=""
             tokens.append(")")
             continue
-        if x!=" " and x!="'":
+        elif x=="]":
+            if cache!="":
+                tokens.append(cache)
+            cache=""
+            msg=""
+            tokens.append("]")
+            continue
+        elif x=="}":
+            if cache!="":
+                tokens.append(cache)
+            cache=""
+            msg=""
+            tokens.append("}")
+            continue
+        elif x!=" " and x!="'":
             cache+=x
-        if x==",":
+        elif x==",":
             if cache!="":
                 if cache[-1]==",":
                     tokens.append(cache[:-1])
@@ -145,7 +179,7 @@ def break_expr(expr):
                     msg=""
             tokens.append(",")
             continue
-        if x==" ":
+        elif x==" ":
             if msg=="":
                 if cache=="":
                     pass
@@ -156,7 +190,7 @@ def break_expr(expr):
                         msg=""
             elif msg=="str":
                 cache+=x
-        if x=="'":
+        elif x=="'":
             if msg!="str":
                 msg="str"
                 cache+=x
@@ -165,7 +199,7 @@ def break_expr(expr):
                 msg=""
                 tokens.append(cache+"'")
                 cache=""
-        if (cache=="in" or cache=="or" or cache=="and" or cache=="not") and tokens[token_i+1]==" ":
+        elif (cache=="in" or cache=="or" or cache=="and" or cache=="not") and tokens[token_i+1]==" ":
             tokens.append(" "+cache+" ")
             cache=""
     if cache!="":
@@ -173,9 +207,12 @@ def break_expr(expr):
     return tokens
 
 #This function return the string without its quotes if it is not a number otherwise as an integer
-def refactor_temp(data):
+def refactor_temp(data,res=False):
     data=str(data)
+    print(data)
     if data[0] == "'" and data[-1]=="'":
+        if res:
+            return data
         return data[1:-1]
     try:
         return ltz_round(data)
@@ -183,6 +220,7 @@ def refactor_temp(data):
         pass
     return data
 
+#Break the whole script into tokens
 #Break the whole script into tokens
 def tokeniser(code):
     global tokens,cache,state,alt,last,msg
@@ -203,10 +241,10 @@ def tokeniser(code):
         last=to_append
     for x in code:
         execd=False
-        if x==" " and cache!="" and state!="str" and state!="expr" and msg!="first_quote":
+        if x==" " and cache!="" and state!="str" and state!="expr" and msg!="first_quote" and state!="arcall" and state!="set":
             execd=True
             appender(cache)
-        elif x==" " and cache=="":
+        elif x==" " and cache=="" and state!="arcall" and state!="set":
             execd=True
         if execd==False and x==" " and state=="str":
             cache+=x
@@ -225,11 +263,11 @@ def tokeniser(code):
         if x=="'" and state=="str" and msg!="first_quote":
             execd=True
             appender(cache)
-        if x==";" and cache!="" and state!="expr" and state!="str":
+        if x==";" and cache!="" and state!="expr" and state!="arcall" and state!="str" and state!="set":
             execd=True
             appender(cache)
             appender(x)
-        elif x==";" and state!="expr" and msg=="" and state!="str":
+        elif x==";" and state!="expr" and state!="arcall" and msg=="" and state!="str" and state!="set":
             appender(x)
         if x==")" and state=="expr":
             cache+=x
@@ -243,10 +281,36 @@ def tokeniser(code):
             if msg=="":
                 msg=0
             msg+=1
+        if x=="]" and state=="arcall":
+            cache+=x
+            msg=msg-1
+            if msg==0:
+                appender(cache)
+            continue
+        if x=="[":
+            cache+=x
+            execd=True
+            state="arcall"
+            if msg=="":
+                msg=0
+            msg+=1
+        if x=="}" and state=="set":
+            cache+=x
+            msg=msg-1
+            if msg==0:
+                appender(cache)
+            continue
+        if x=="{":
+            cache+=x
+            execd=True
+            state="set"
+            if msg=="":
+                msg=0
+            msg+=1
         if state=="expr":
             execd=True
             cache+=x
-        if x=="=" and state!="expr":
+        if x=="=" and state!="expr" and state!="arcall" and state!="set":
             execd=True
             if cache!="":
                 appender(cache)
@@ -286,6 +350,8 @@ def expr_pre_processor(expr,partial=False,use_st=True):
         if x in symbol_table["vars"]:
             if type(symbol_table[x])==type("") and not partial:
                 new_expr_tokens.append("'"+symbol_table[x]+"'")
+            elif len(x.split("."))==2 and x.split(".")[0] in symbol_table["vars"] and x.split(".")[1] in symbol_table["vars"] and type(symbol_table[x.split(".")[0]])=={} and x.split(".")[1] in symbol_table[x.split(".")[1]]:
+                new_expr_tokens(symbol_table[x.split(".")[0]][symbol_table[x.split(".")[1]]])
             elif partial:
                 if x=="vars":
                     new_expr_tokens.append(f"vars")
@@ -301,14 +367,7 @@ def expr_pre_processor(expr,partial=False,use_st=True):
                 error("Numbers are too large",0)
     new_expr=""
     for x in new_expr_tokens:
-        new_expr+=str(x)
-    i=-1
-    for x in new_expr:
-        i+=1
-        if i==0:
-            continue
-        if new_expr[i]=="(" and (new_expr[i-1]!="(" and new_expr[i-1] not in operators):
-            error("Dangerous Input detected",line_i)
+        new_expr+=str(str(x)+" ")
     i=-1
     for x in new_expr:
         i+=1
@@ -325,13 +384,13 @@ def expr_pre_processor(expr,partial=False,use_st=True):
         elif x=="vars":
             new_expr+=str(list(symbol_table.keys()))
         else:
-            new_expr+=str(x)
+            new_expr+=str(str(x)+" ")
     return new_expr
 
 #This evalutes the values of the broken down expressions
 def expr_post_processor(prep_expr):
     try:
-        val=eval(prep_expr,{},{})
+        val=eval(prep_expr,{'__builtins__':{}},{'__builtins__':{}})
     except Exception as e:
         error(str(e),line_i)
     if type(val)==type((1,2)):
@@ -431,7 +490,10 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         init_compile_str_2="="
                         for y in init_vars:
                             init_compile_str_1+=f"{y.split(':')[0]},"
-                            init_compile_str_2+=f"{type_default(y.split(':')[1])},"
+                            if type_default(y.split(':')[1])!='':
+                                init_compile_str_2+=f"{str(type_default(y.split(':')[1]))},"
+                            else:
+                                init_compile_str_2+=f"'',"
                         add_compile(init_compile_str_1+init_compile_str_2)
                         indents-=1
                         add_compile("boot=1")
@@ -468,8 +530,12 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     continue
                 #Changing values of variables
                 elif x == "var":
-                    if (args==3) and tokenz[i+1] not in blacklist and tokenz[i+1] in symbol_table["vars"] and is_valid_var_name(tokenz[i+1]) and "|" not in tokenz[i+3]:
-                        if tokenz[i+3] in symbol_table['vars']:
+                    if (args==3) and tokenz[i+1].split(".")[0] not in blacklist and tokenz[i+1].split(".")[0] in symbol_table["vars"] and is_valid_var_name(tokenz[i+1].split(".")[0]) and "|" not in tokenz[i+3]:
+                        if len(tokenz[i+1].split(","))==2:
+                            if tokenz[i+1].split(".")[1] in symbol_table["vars"]:
+                                pass
+                            error("Invalid set type var declaration",line_i)
+                        if tokenz[i+3] in symbol_table['vars'] and len(tokenz[i+3].split("."))==1:
                             if type(symbol_table[tokenz[i+1]])!=type(symbol_table[tokenz[i+3]]):
                                 error(f"Cannot assign variable '{tokenz[i+1]}' of type {type(symbol_table[tokenz[i+1]])} a value of type {type(symbol_table[tokenz[i+3]])}")
                             if gas:
@@ -477,6 +543,19 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                             if compile:
                                 add_compile(f"globals()['{tokenz[i+1]}']={tokenz[i+3]}")
                             symbol_table[tokenz[i+1]]=refactor_temp(symbol_table[tokenz[i+3]])
+                        elif len(tokenz[i+1].split("."))==2 and tokenz[i+1].split(".")[0] in symbol_table and type(symbol_table[tokenz[i+1].split(".")[0]])==type({}):
+                            if compile:
+                                sq="'"
+                                add_compile(f'globals()["{tokenz[i+1].split(".")[0]}[{sq}{symbol_table[tokenz[i+1].split(".")[1]]}{sq}]"]'+f'={tokenz[i+3]}')
+                            if gas:
+                                fees+=len(tokenz[i+3])
+                            symbol_table[tokenz[i+1].split(".")[0]][symbol_table[tokenz[i+1].split(".")[1]]]=expr_post_processor(expr_pre_processor(tokenz[i+3]))
+                        elif len(tokenz[i+3].split("."))==2 and tokenz[i+3].split(".")[0] in symbol_table and type(symbol_table[tokenz[i+3].split(".")[0]])==type({}) and tokenz[i+3].split(".")[1] in symbol_table:
+                            if compile:
+                                add_compile(f'globals()["{tokenz[i+1]}"]={tokenz[i+3].split(".")[0]}["{symbol_table[tokenz[i+3].split(".")[1]]}"]')
+                            if gas:
+                                fees+=len(tokenz[i+3].split(".")[1])
+                            symbol_table[tokenz[i+1]]=symbol_table[tokenz[i+3].split(".")[0]][symbol_table[tokenz[i+3].split(".")[1]]]
                         elif tokenz[i+3]=="true" or tokenz[i+3]=='false':
                             if type(symbol_table[tokenz[i+1]])!=type(True):
                                 error(f"Cannot assign variable '{tokenz[i+1]}' of type {type(symbol_table[tokenz[i+1]])} a value of type {type(True)}")
@@ -495,7 +574,7 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                 if is_num(tokenz[i+3]):
                                     add_compile(f"globals()['{tokenz[i+1]}']={(tokenz[i+3])}")
                                 else:
-                                    add_compile(f"globals()['{tokenz[i+1]}']={(refactor_temp(tokenz[i+3]))}")
+                                    add_compile(f"globals()['{tokenz[i+1]}']={(tokenz[i+3])}")
                             var_val=expr_post_processor(expr_pre_processor(tokenz[i+3]))
                             if type(var_val)!=type(symbol_table[tokenz[i+1]]):
                                 error(f"Cannot assign variable '{tokenz[i+1]}' of type {type(symbol_table[tokenz[i+1]])} a value of type {type(var_val)}")
@@ -614,11 +693,21 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     continue
                 #To delete / free a variable
                 elif x=="del" and args==1 and tokenz[i+1] in symbol_table["vars"]:
-                    del symbol_table[tokenz[i+1]]
-                    symbol_table["vars"].remove(tokenz[i+1])
+                    if not compile:
+                        del symbol_table[tokenz[i+1]]
+                        symbol_table["vars"].remove(tokenz[i+1])
                     if compile:
                         add_compile(f"del locals()[{add_sq(tokenz[i+1])}]")
                     ignore.append(i+1)
+                    continue
+                #To delete / free a sub variable
+                elif x=="del" and args==2 and tokenz[i+1] in symbol_table["vars"] and type(symbol_table[tokenz[i+1]])==type({}) and tokenz[i+2] in symbol_table[tokenz[i+1]]:
+                    if not compile:
+                        del symbol_table[tokenz[i+1]][tokenz[i+2]]
+                    if compile:
+                        add_compile(f"del locals()[{add_sq(tokenz[i+1])}][{add_sq(tokenz[i+2])}]")
+                    ignore.append(i+1)
+                    ignore.append(i+2)
                     continue
                 #To return a value from a function
                 elif x=="omit" and args==1:
@@ -721,12 +810,13 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                 ignore.append(i+2)
                                 continue
                             elif tokenz[i+1] == "-":
-                                if tokenz[i+2] in symbol_table["vars"]:
-                                    symbol_table[object_val].remove(symbol_table[tokenz[i+2]])
-                                else:
-                                    symbol_table[object_val].remove(expr_post_processor(expr_pre_processor(tokenz[i+2])))
-                                if object_val not in symbol_table["vars"]:
-                                    symbol_table["vars"].remove(object_val)
+                                if not compile:
+                                    if tokenz[i+2] in symbol_table["vars"]:
+                                        symbol_table[object_val].remove(symbol_table[tokenz[i+2]])
+                                    else:
+                                        symbol_table[object_val].remove(expr_post_processor(expr_pre_processor(tokenz[i+2])))
+                                    if object_val not in symbol_table["vars"]:
+                                        symbol_table["vars"].remove(object_val)
                                 if compile:
                                     store=tokenz[i+2]
                                     if type(expr_post_processor(expr_pre_processor(store,use_st=False)))==type([]):

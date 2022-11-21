@@ -164,6 +164,30 @@ The syntax for executing such function which return a value is
 .{func_name} {var_name};
 ```
 This stores the value omitted by the function in the variable provided.
+
+### Dicts
+Dictionaries invitality are used to store data values in key:value pairs
+Creating a dict
+```cs
+vars: x:set;
+function main (
+    var x = {};
+);
+```
+Adding key to a set/dict
+```cs
+var x.y=z;
+#Where 'y' is the key value in string and z is the value for the key z inside of variable x
+```
+To delete a key
+```cs
+del x y;
+#Where x is dict/set var name and y is key
+```
+To reference a dict key
+```cs
+var a = dict.key;
+```
 ## VTX
 VTX is a locally interpreted and compiled version of vitality which allows import code from external files.\
 All of the dependencies are compiled as a standalone vitality script.
