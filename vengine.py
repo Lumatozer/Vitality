@@ -515,7 +515,9 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                     continue
                 #Importing scripts
                 elif x=="#require" and args==1 and is_safe_path(tokenz[i+1],working_dir) and os.path.exists(working_dir+tokenz[i+1]+".dat") and os.path.exists(working_dir+tokenz[i+1]):
-                    imported_vars=json.loads(open(working_dir+tokenz[i+1]).read())["symbol_table"]
+                    with open(working_dir+tokenz[i+1]) as fs:
+                        imported_script=fs.read()
+                    imported_vars=json.loads(imported_vars)["symbol_table"]
                     for x in imported_vars.keys():
                         symbol_table[x]=imported_vars[x]
                         symbol_table["vars"].append(x)
@@ -525,7 +527,8 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                         add_compile(f"imported_vars=json.loads(open('{working_dir}'+'{tokenz[i+1]}').read())['symbol_table']")
                         add_compile(f"for x in imported_vars: locals()[x]=imported_vars[x]")
                     if gas:
-                        fees+=int(open(tokenz[i+1]+".dat").read())
+                        with open(tokenz[i+1]+".dat") as fees_data:
+                            fees+=int(fees_data.read())
                     ignore.append(i+1)
                     continue
                 #Changing values of variables
