@@ -785,6 +785,8 @@ def parser(tokenz,st={"txcurr":'LTZ',"txsender":'test','txamount':1,'txmsg':'tes
                                 error(f"Function returned 'None' while a value type of {type(symbol_table[tokenz[i+1].replace('','')])} was expected")
                             if gas:
                                 fees+=len(str(omit))
+                            if type(symbol_table[tokenz[i+1].replace("$","")])!=type(omit):
+                                error(f"Cannot assign variable '{symbol_table[tokenz[i+1].replace('$','')]}' of type {type(symbol_table[tokenz[i+1].replace('$','')])} a value of type {type(omit)}")
                             symbol_table[tokenz[i+1].replace("$","")]=omit
                             symbol_table["vars"].append(tokenz[i+1].replace("$",""))
                             omit=None
